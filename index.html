@@ -513,6 +513,52 @@ function cardCombo(combo){
   d.append(foto,nome,obs,precoTile,acoes);return d;
 }
 function abrirGerenciarProdutos(){const m=baseModal('✏️ Editar produtos','Renomeie, exclua ou adicione produtos novos no catálogo.');CATEGORIAS.forEach(c=>{const itensCat=PRODUTOS.filter(p=>p.catId===c.id);if(!itensCat.length)return;const grupo=document.createElement('div');grupo.style.cssText='margin-bottom:14px';const tit=document.createElement('div');tit.style.cssText='font-weight:800;font-size:12px;text-transform:uppercase;color:#7a7264;border-bottom:1px solid #ece2cc;padding-bottom:4px;margin-bottom:6px';tit.textContent=c.emoji+' '+c.titulo;grupo.appendChild(tit);itensCat.forEach(p=>{const linha=document.createElement('div');linha.style.cssText='display:flex;gap:6px;align-items:center;margin-bottom:6px';const inp=document.createElement('input');inp.value=p.nome;inp.style.cssText='flex:1;padding:7px 8px;border:1px solid #d8cfb8;border-radius:8px;font-size:12.5px';inp.onchange=()=>{if(!inp.value.trim())return;if(!CATALOGO.editados[p.id])CATALOGO.editados[p.id]={};CATALOGO.editados[p.id].nome=inp.value.trim();salvarCatalogo();buildProdutos();render();toast('Produto renomeado')};const del=document.createElement('button');del.textContent='🗑️';del.style.cssText='border:0;border-radius:8px;padding:7px 10px;background:var(--vermelhobg);color:var(--vermelho);font-weight:800';del.onclick=()=>{if(!confirm('Remover "'+p.nome+'" do catálogo? Isso não apaga vendas já registradas.'))return;if(!CATALOGO.removidos.includes(p.id))CATALOGO.removidos.push(p.id);salvarCatalogo();buildProdutos();render();fecharModal();toast('Produto removido')};linha.append(inp,del);grupo.appendChild(linha)});m.appendChild(grupo)});const novo=document.createElement('div');novo.style.cssText='border-top:2px solid var(--amarelo);padding-top:12px;margin-top:6px';novo.innerHTML='<div style="font-weight:800;font-size:13px;margin-bottom:8px">+ Adicionar produto novo</div>';const selCat=document.createElement('select');selCat.style.cssText='width:100%;padding:9px;border:1px solid #d8cfb8;border-radius:8px;margin-bottom:8px;font-size:13px';CATEGORIAS.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.emoji+' '+c.titulo;selCat.appendChild(o)});const inpNome=document.createElement('input');inpNome.placeholder='Nome do produto';inpNome.className='campo';const inpPacote=document.createElement('input');inpPacote.type='number';inpPacote.placeholder='Unidades por fardo/caixa (deixe em branco se não tiver)';inpPacote.className='campo';const lblUn=document.createElement('label');lblUn.style.cssText='display:flex;align-items:center;gap:6px;font-size:12.5px;margin-bottom:10px';const chkUn=document.createElement('input');chkUn.type='checkbox';lblUn.append(chkUn,document.createTextNode('Controlado só por unidade (sem fardo/caixa) — ex: destilado, vinho'));chkUn.onchange=()=>{inpPacote.disabled=chkUn.checked;inpPacote.style.opacity=chkUn.checked?'.4':'1'};const btnAdd=document.createElement('button');btnAdd.textContent='Adicionar produto';btnAdd.style.cssText='width:100%;padding:12px;border:0;border-radius:10px;background:var(--preto);color:var(--amarelo);font-weight:800;font-size:14px';btnAdd.onclick=()=>{const nome=inpNome.value.trim();if(!nome)return toast('Digita o nome do produto');const catId=selCat.value;let id=catId+'--'+slug(nome);if(PRODUTOS.find(x=>x.id===id))id=id+'-'+Date.now();CATALOGO.extras.push({id,catId,nome,pacote:chkUn.checked?null:(Number(inpPacote.value)||null),unidadeOnly:chkUn.checked});salvarCatalogo();buildProdutos();render();fecharModal();toast('Produto adicionado')};novo.append(selCat,inpNome,inpPacote,lblUn,btnAdd);m.appendChild(novo)}
+const CHAVES_BACKUP=['estoque-vh-v2','vendas-vh-v2','carrinho-vh-v2','loja-vh-v2','contador-venda-vh-v2','clientes-vh-v2','combos-vh-v2','orcamentos-vh-v2','contador-orcamento-vh-v2','caixa-vh-v2','caixa-historico-vh-v2','catalogo-vh-v2'];
+function exportarBackup(){
+  salvar();salvarLoja();salvarClientes();salvarCombos();salvarCaixaTudo();
+  const dados={};
+  CHAVES_BACKUP.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)dados[k]=JSON.parse(v)});
+  const pacote={app:'vh-bebidas',versao:1,exportadoEm:new Date().toISOString(),dados};
+  const blob=new Blob([JSON.stringify(pacote)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='backup-vh-bebidas-'+hoje()+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Backup baixado');
+}
+function restaurarBackup(file){
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const pacote=JSON.parse(reader.result);
+      if(!pacote||!pacote.dados)throw new Error('formato inválido');
+      if(!confirm('Isso vai SUBSTITUIR tudo que está salvo agora (estoque, preços, vendas, clientes, fotos) pelo conteúdo desse backup de '+(pacote.exportadoEm?new Date(pacote.exportadoEm).toLocaleString('pt-BR'):'data desconhecida')+'. Quer continuar?'))return;
+      CHAVES_BACKUP.forEach(k=>{if(k in pacote.dados)localStorage.setItem(k,JSON.stringify(pacote.dados[k]))});
+      toast('Backup restaurado! Recarregando...');
+      setTimeout(()=>location.reload(),900);
+    }catch(err){toast('Esse arquivo não parece um backup válido do app')}
+  };
+  reader.readAsText(file);
+}
+function abrirBackup(){
+  const m=baseModal('💾 Backup completo','Salve uma cópia de tudo (estoque, preços, fotos, vendas, clientes, orçamentos, caixa) num arquivo — pra não perder nada se trocar de celular ou navegador.');
+  const btnExport=document.createElement('button');
+  btnExport.textContent='📤 Baixar backup completo agora';
+  btnExport.style.cssText='width:100%;padding:14px;border:0;border-radius:10px;background:var(--verde);color:#fff;font-weight:800;font-size:14px;margin-bottom:10px';
+  btnExport.onclick=exportarBackup;
+  m.appendChild(btnExport);
+  const dica=document.createElement('p');dica.style.cssText='font-size:11px;color:#7a7264;margin:-2px 0 16px';
+  dica.textContent='Guarda esse arquivo em algum lugar seguro (Google Drive, WhatsApp pra você mesmo, etc). Recomendo fazer isso toda semana.';
+  m.appendChild(dica);
+  const tit2=document.createElement('div');tit2.style.cssText='font-weight:800;font-size:13px;margin-bottom:8px;border-top:2px solid var(--amarelo);padding-top:14px';tit2.textContent='📥 Restaurar de um backup';
+  m.appendChild(tit2);
+  const aviso=document.createElement('p');aviso.style.cssText='font-size:11.5px;color:var(--vermelho);margin-bottom:10px';
+  aviso.textContent='Atenção: isso substitui tudo que está salvo agora nesse aparelho pelo conteúdo do arquivo escolhido.';
+  m.appendChild(aviso);
+  const inpFile=document.createElement('input');inpFile.type='file';inpFile.accept='application/json,.json';inpFile.className='campo';
+  inpFile.onchange=()=>{if(inpFile.files[0])restaurarBackup(inpFile.files[0])};
+  m.appendChild(inpFile);
+}
 function abrirDadosLoja(){const m=baseModal('🏪 Dados da loja','Essas informações aparecem no topo dos cupons de venda.');const campos=[['Nome da loja','nome'],['Endereço','endereco'],['CNPJ','cnpj'],['Telefone','telefone']];campos.forEach(([label,key])=>{const l=document.createElement('div');l.style.cssText='font-size:11px;color:#7a7264;margin-bottom:3px;font-weight:700';l.textContent=label;const i=document.createElement('input');i.className='campo';i.value=LOJA[key]||'';i.oninput=()=>{LOJA[key]=i.value;salvarLoja()};m.append(l,i)});const l2=document.createElement('div');l2.style.cssText='font-size:11px;color:#7a7264;margin-bottom:3px;font-weight:700;margin-top:6px';l2.textContent='Próximo número de venda';const inpNum=document.createElement('input');inpNum.className='campo';inpNum.type='number';inpNum.value=PROX_VENDA;inpNum.oninput=()=>{PROX_VENDA=Number(inpNum.value)||1;salvar()};m.append(l2,inpNum);const fechar=document.createElement('button');fechar.textContent='Pronto';fechar.style.cssText='width:100%;padding:12px;border:0;border-radius:10px;background:var(--preto);color:var(--amarelo);font-weight:800;font-size:14px;margin-top:10px';fechar.onclick=fecharModal;m.appendChild(fechar)}
 function abrirClientes(callback){const m=baseModal('👥 Clientes',callback?'Selecione um cliente ou cadastre um novo.':'Cadastre uma vez e selecione rapidinho na hora da venda.');if(callback&&CLIENTES.length){CLIENTES.forEach(cli=>{const b=document.createElement('button');b.style.cssText='width:100%;text-align:left;padding:10px 12px;border:1px solid #e6ddc7;border-radius:10px;background:#fff;margin-bottom:6px;font-weight:700;font-size:13px';b.innerHTML=cli.nome+(cli.telefone?' <span style="font-weight:400;color:#9a917d;font-size:11px">· '+cli.telefone+'</span>':'');b.onclick=()=>{callback(cli);fecharModal()};m.appendChild(b)})}if(CLIENTES.length&&!callback){CLIENTES.forEach(cli=>{const d=document.createElement('div');d.style.cssText='border:1px solid #e6ddc7;border-radius:10px;padding:10px;margin-bottom:8px';d.innerHTML='<div style="font-weight:800;font-size:13.5px;margin-bottom:2px">'+cli.nome+'</div>'+(cli.telefone?'<div style="font-size:11.5px;color:#7a7264">📞 '+cli.telefone+'</div>':'')+(cli.endereco?'<div style="font-size:11.5px;color:#7a7264">📍 '+cli.endereco+'</div>':'')+(cli.referencia?'<div style="font-size:11.5px;color:#7a7264">🧭 '+cli.referencia+'</div>':'');const del=document.createElement('button');del.textContent='🗑️ Excluir';del.style.cssText='margin-top:6px;border:0;border-radius:7px;padding:6px 10px;background:var(--vermelhobg);color:var(--vermelho);font-weight:800;font-size:11.5px';del.onclick=()=>{if(!confirm('Excluir o cliente "'+cli.nome+'"? As vendas já registradas não são afetadas.'))return;CLIENTES=CLIENTES.filter(x=>x.id!==cli.id);salvarClientes();fecharModal();abrirClientes()};d.appendChild(del);m.appendChild(d)})}const novo=document.createElement('div');novo.style.cssText='border-top:2px solid var(--amarelo);padding-top:12px;margin-top:8px';novo.innerHTML='<div style="font-weight:800;font-size:13px;margin-bottom:8px">+ Novo cliente</div>';const inpNome=document.createElement('input');inpNome.className='campo';inpNome.placeholder='Nome do cliente';const inpTel=document.createElement('input');inpTel.className='campo';inpTel.placeholder='Telefone (opcional)';const inpEnd=document.createElement('input');inpEnd.className='campo';inpEnd.placeholder='Endereço (opcional)';const inpRef=document.createElement('input');inpRef.className='campo';inpRef.placeholder='Ponto de referência (opcional)';const btnAdd=document.createElement('button');btnAdd.textContent='Cadastrar cliente';btnAdd.style.cssText='width:100%;padding:12px;border:0;border-radius:10px;background:var(--preto);color:var(--amarelo);font-weight:800;font-size:14px';btnAdd.onclick=()=>{const nome=inpNome.value.trim();if(!nome)return toast('Digita o nome do cliente');const cli={id:Date.now()+Math.random(),nome,telefone:inpTel.value.trim(),endereco:inpEnd.value.trim(),referencia:inpRef.value.trim()};CLIENTES.push(cli);salvarClientes();toast('Cliente cadastrado');if(callback){callback(cli);fecharModal()}else{fecharModal();abrirClientes()}};novo.append(inpNome,inpTel,inpEnd,inpRef,btnAdd);m.appendChild(novo)}
 function vendasDoCaixa(){return CAIXA.aberto?VENDAS.filter(v=>v.ts>=CAIXA.ts):[]}
@@ -710,6 +756,7 @@ function abrirMenu(){
     ['👥','Clientes',()=>abrirClientes()],
     ['✏️','Editar produtos',abrirGerenciarProdutos],
     ['🏪','Dados da loja',abrirDadosLoja],
+    ['💾','Backup (salvar/restaurar tudo)',abrirBackup],
   ];
   itensMenu.forEach(([emoji,label,fn])=>{
     const b=document.createElement('button');
