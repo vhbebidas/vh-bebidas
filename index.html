@@ -1357,6 +1357,12 @@ function precoExibicaoLinhas(p,e){
   return linhas.length?linhas:['Consulte o preço'];
 }
 function precoExibicao(p,e){return precoExibicaoLinhas(p,e).join(' · ')}
+function precoExibicaoLinhasCatalogo(p,e){
+  const linhas=precoExibicaoLinhas(p,e);
+  if(p.unidadeOnly)return linhas;
+  const semUnidade=linhas.filter(l=>!l.endsWith(' un.'));
+  return semUnidade.length?semUnidade:['Consulte o preço'];
+}
 function cardCatalogo(p){
   const e=estado(p);
   const d=document.createElement('div');d.className='card item';d.style.padding='16px';d.dataset.nome=p.nome.toLowerCase();
@@ -1365,7 +1371,7 @@ function cardCatalogo(p){
   const fotoMostrar2=fotoAtual(p,e);foto.innerHTML=fotoMostrar2?'<div class="foto-img" style="background-image:url(\''+fotoMostrar2+'\')"></div>':'<span>'+p.emoji+'</span>';
   const corpo=document.createElement('div');corpo.className='cat-corpo';
   const nome=document.createElement('div');nome.className='cat-nome';nome.textContent=p.nome;
-  const linhasPreco=precoExibicaoLinhas(p,e);
+  const linhasPreco=precoExibicaoLinhasCatalogo(p,e);
   const precos=document.createElement('div');precos.className='cat-precos';precos.innerHTML=linhasPreco.join('<br>');
   corpo.append(nome,precos);
   if(p.promo){
@@ -1383,7 +1389,7 @@ function renderCatalogoPublico(){
   const main=document.getElementById('main'),chips=document.getElementById('chips');
   main.innerHTML='';chips.innerHTML='';
   CATEGORIAS.forEach(c=>{
-    const itensCat=PRODUTOS.filter(p=>p.catId===c.id&&!estado(p).pausado);if(!itensCat.length)return;
+    const itensCat=PRODUTOS.filter(p=>p.catId===c.id&&!estado(p).pausado&&!p.cigarro&&p.id!=='diversos--picole-palito');if(!itensCat.length)return;
     const ch=document.createElement('button');ch.className='chip';ch.textContent=c.emoji+' '+tituloCategoria(c);ch.onclick=()=>document.getElementById('cat-'+c.id).scrollIntoView({behavior:'smooth'});chips.appendChild(ch);
     const sec=document.createElement('section');sec.className='categoria';sec.id='cat-'+c.id;
     sec.innerHTML='<div class="titulo">'+c.emoji+' '+tituloCategoria(c)+'</div>';
