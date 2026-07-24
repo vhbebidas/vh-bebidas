@@ -17,6 +17,20 @@
 <meta name="apple-mobile-web-app-title" content="VH Bebidas">
 <style>
 :root{--preto:#111111;--preto2:#ffffff;--preto3:#f4f4f6;--amarelo:#111111;--creme:#f2f3f5;--creme2:#eceef1;--verde:#1fa35a;--verdebg:#e6f7ee;--vermelho:#e0483e;--vermelhobg:#fdecea;--azul:#3b82f6;--azulbg:#e8f0fe;--laranja:#e0a020;--laranjabg:#fff4e0}*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;font-family:inherit}body{margin:0;background:var(--creme);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1a1a1a;padding-bottom:100px}header{background:#fff;color:#1a1a1a;padding:14px 14px 12px;position:sticky;top:0;z-index:30;box-shadow:0 2px 10px rgba(0,0,0,.06);transition:padding .18s ease;border-bottom:1px solid #ececef}header.compacto{padding:8px 14px 9px}header.compacto .chips{margin-top:6px}header.compacto #busca{padding:8px 12px;font-size:14px}.top{display:flex;align-items:center;justify-content:space-between;gap:10px}.logo{font-size:19px;font-weight:800;color:#1a1a1a;white-space:nowrap;display:flex;align-items:center}.logo-img{height:34px;max-width:170px;object-fit:contain;display:block}.logo small{font-size:11px;font-weight:700;color:#fff;letter-spacing:.5px;background:linear-gradient(135deg,#fbbf24,#f97316);padding:2px 7px;border-radius:99px;margin-left:2px}.menu-btn{display:flex;align-items:center;gap:6px;background:linear-gradient(135deg,#fbbf24,#f97316);color:#fff;border:0;border-radius:99px;padding:9px 15px;font-size:13px;font-weight:800;cursor:pointer;min-height:40px}.menu-btn:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}.busca-row{display:flex;gap:8px;margin-top:11px}#busca{width:100%;flex:1;padding:12px 16px;border:1px solid #e4e4e7;border-radius:16px;font-size:15px;background:#fafafa;transition:padding .18s ease}.btn-lupa{flex:0 0 44px;border:1px solid #e4e4e7;border-radius:14px;background:#111;color:#fff;font-size:16px;cursor:pointer;min-height:40px}header.compacto .busca-row{margin-top:7px}.resumo{display:flex;gap:8px;margin-top:2px}.pill{flex:1;text-align:center;background:#fff;border:1px solid #ececef;border-radius:14px;padding:11px}.pill b{display:block;color:#111;font-size:15px;white-space:nowrap}.pill span{font-size:9.5px;color:#9a9aa0;text-transform:uppercase;font-weight:700}.fechar{width:100%;background:#fff;border:1px solid #ececef;border-radius:16px;padding:16px 12px;font-weight:700;font-size:12.5px;min-height:70px;cursor:pointer;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,.04)}.fechar span:first-child{font-size:22px}.menu-lista{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.chips{display:flex;gap:7px;overflow:auto;margin-top:11px;scrollbar-width:none;transition:margin .18s ease}.chip{flex:none;padding:8px 14px;border-radius:99px;background:#fff;color:#555;border:1px solid #e4e4e7;font-size:12px;font-weight:700;cursor:pointer;min-height:32px}main{padding:14px 12px;max-width:680px;margin:auto}.categoria{display:flex;flex-direction:column;gap:9px;margin-top:22px;scroll-margin-top:150px}.titulo{font-size:12px;font-weight:800;text-transform:uppercase;color:#9a9aa0;padding-bottom:4px;margin-bottom:2px;letter-spacing:.4px}.card{display:flex;flex-direction:column;background:#fff;border:1px solid #f0f0f2;border-radius:18px;padding:11px;position:relative;color:#1a1a1a;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;box-shadow:0 1px 4px rgba(0,0,0,.045)}.card *{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}.card.baixo{border-color:var(--vermelho);background:#fffaf9}.card.pausado{opacity:.5}.card.pausado::after{content:'PAUSADO';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-16deg);font-size:19px;font-weight:900;color:rgba(180,40,30,.4);letter-spacing:2px;pointer-events:none;white-space:nowrap;text-transform:uppercase;z-index:3}.acao.ativar{background:var(--verdebg);color:var(--verde)}.card-top{display:flex;align-items:center;gap:12px}.cat-top{display:flex;align-items:center;gap:16px}.cat-corpo{flex:1;min-width:0}.cat-nome{font-size:18px;font-weight:800;color:#1a1a1a;margin-bottom:7px;line-height:1.25}.cat-precos{font-size:16px;font-weight:800;color:#1a1a1a;line-height:1.7}.cat-promo{margin-top:8px;background:#fff4e0;color:#c9740f;font-size:13px;font-weight:800;padding:6px 11px;border-radius:9px;display:inline-block}.foto{width:52px;height:52px;border-radius:14px;background:#fff;display:grid;place-items:center;font-size:22px;overflow:hidden;flex:none;position:relative;border:1px solid #f0f0f2}.foto-img{width:100%;height:100%;background-size:contain;background-repeat:no-repeat;background-position:center;background-color:#fff;-webkit-touch-callout:none;pointer-events:none}.foto input{display:none}.camera{position:absolute;right:0;bottom:0;background:#111;color:#fff;font-size:9px;padding:2px 3px;border-radius:4px 0 0 0}.estrela{position:absolute;top:-6px;left:-6px;z-index:5;background:#fff;border:1px solid #ececef;border-radius:99px;width:24px;height:24px;font-size:13px;line-height:1;cursor:pointer;color:#c9c9cf;box-shadow:0 1px 3px rgba(0,0,0,.12)}.estrela.ativa{color:#f59e0b}.info-clicavel{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}.info-texto{min-width:0;text-align:left}.nome{font-size:13.5px;font-weight:700;line-height:1.3;color:#1a1a1a;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.preco-tile{font-size:14px;font-weight:800;color:#1a1a1a;text-align:right;flex:none;line-height:1.35}.preco-tile.multi{font-size:11.5px}.peek-bg{position:fixed;inset:0;background:rgba(20,20,22,.55);z-index:150;display:flex;align-items:center;justify-content:center;padding:16px;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}.peek-card{background:#fff;border:1px solid #ececef;border-radius:22px;padding:22px;width:100%;max-width:420px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;align-items:center;text-align:center;color:#1a1a1a;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none;box-shadow:0 10px 40px rgba(0,0,0,.2)}.peek-foto{width:38vw;max-width:170px;height:38vw;max-height:170px;border-radius:18px;background:#fff;border:1px solid #f0f0f2;margin-bottom:14px;-webkit-touch-callout:none;pointer-events:none}.peek-nome{font-size:clamp(18px,5.5vw,24px);font-weight:800;margin-bottom:12px}.peek-precos{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;width:100%}.peek-preco-linha{background:#f6f7f9;border-radius:12px;padding:11px;font-size:clamp(16px,4.5vw,20px);font-weight:800;color:#111}.peek-estoque{font-size:14px;color:#555;margin-bottom:8px}.peek-obs{font-size:11.5px;color:#9a9aa0}.peek-dica{font-size:10.5px;color:#b5b5bb;margin-top:16px}.estoque-badge{font-size:11px;color:#9a9aa0;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.estoque-badge b{font-weight:700;color:#666}.estoque-badge.low{color:var(--vermelho)}.estoque-badge.low b{color:var(--vermelho)}.acoes-tile{display:flex;gap:6px;width:100%;margin-top:10px;padding-top:10px;border-top:1px solid #f4f4f6}.acao{flex:1;border:0;border-radius:12px;font-size:11.5px;font-weight:700;min-height:38px;cursor:pointer;padding:0 2px}.venda{background:var(--vermelhobg);color:var(--vermelho)}.repor{background:var(--verdebg);color:var(--verde)}.corrigir{flex:0 0 34px !important;background:#f4f4f6;color:#888;font-size:15px !important;border-radius:12px}.detalhes{width:100%;margin-top:9px;padding-top:9px;border-top:1px solid #f4f4f6;text-align:left}.detalhes.hide{display:none}.obs{font-size:10.5px;color:#9a9aa0;margin-bottom:7px}.precos{display:flex;flex-wrap:wrap;gap:5px 8px;font-size:9.5px;color:#9a9aa0}.precos label{display:flex;align-items:center;gap:3px}.precos input,.minimo{width:52px;border:1px solid #e4e4e7;border-radius:8px;padding:5px 3px;font-size:11px;min-height:26px;background:#fafafa;color:#1a1a1a}.minrow{margin-top:7px;font-size:9.5px;color:#9a9aa0}.minimo{width:38px}.btn-corrigir-full{width:100%;margin-top:8px;border:0;border-radius:10px;padding:9px;background:#f4f4f6;color:#555;font-weight:700;font-size:11px;cursor:pointer}.crop-overlay{position:fixed;inset:0;background:#111;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:14px}.crop-frame{width:260px;height:260px;max-width:70vw;max-height:70vw;border-radius:20px;overflow:hidden;position:relative;background:#000;touch-action:none;border:2px solid #fff}.crop-frame img{position:absolute;left:0;top:0;user-select:none;-webkit-user-drag:none;pointer-events:none}.crop-dica{color:#bbb;font-size:12px;text-align:center;max-width:280px}.crop-zoom-row{display:flex;align-items:center;gap:8px;width:260px;max-width:70vw}.crop-zoom-row span{font-size:16px}#cropZoom{flex:1}.crop-botoes{width:260px;max-width:70vw;display:flex;gap:10px}.modal-bg{position:fixed;inset:0;background:rgba(20,20,22,.5);z-index:100;display:flex;align-items:flex-end;justify-content:center}.modal{background:#fff;color:#1a1a1a;width:100%;max-width:460px;max-height:90vh;overflow:auto;border-radius:22px 22px 0 0;padding:20px 18px 26px;animation:up .18s ease}@keyframes up{from{transform:translateY(35px);opacity:0}}.modal h3{margin:0 0 4px;font-size:17px;font-weight:800}.modal .desc{font-size:12px;color:#9a9aa0;margin:0 0 14px}.campo{width:100%;padding:13px 15px;border:1px solid #e4e4e7;border-radius:14px;font-size:16px;margin-bottom:10px;min-height:44px;background:#fafafa;color:#1a1a1a}.opcoes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.opcao{flex:1;min-width:95px;padding:11px 6px;border:1px solid #e4e4e7;background:#fafafa;border-radius:14px;font-weight:700;font-size:11.5px;min-height:42px;cursor:pointer;color:#1a1a1a}.opcao.ativa{background:#111;border-color:#111;color:#fff}.temp-quente.ativa{background:#f97316;border-color:#f97316;color:#fff}.temp-gelado.ativa{background:#3b82f6;border-color:#3b82f6;color:#fff}.total{font-size:21px;font-weight:800;margin:4px 0 14px}.botoes{display:flex;gap:8px}.botoes button{flex:1;border:0;border-radius:14px;padding:14px;font-weight:800;min-height:46px;cursor:pointer;font-size:14px}.cancelar{background:#f4f4f6;color:#555}.confirmar{background:#111;color:#fff}.carrinho-fab{position:fixed;z-index:60;right:16px;bottom:18px;border:0;border-radius:99px;background:#111;color:#fff;padding:15px 20px;font-weight:800;box-shadow:0 8px 20px rgba(0,0,0,.25);cursor:pointer;min-height:50px}.cart-item,.venda-item{border-bottom:1px solid #f0f0f2;padding:11px 0}.cart-top{display:flex;justify-content:space-between;gap:10px}.cart-controls{display:flex;gap:5px;align-items:center;margin-top:6px}.cart-controls button,.excluir{border:0;border-radius:10px;padding:8px 12px;font-weight:700;min-height:36px;cursor:pointer}.cart-controls button{background:#f4f4f6}.remover,.excluir{background:var(--vermelhobg)!important;color:var(--vermelho)}.totalbox{background:#111;color:#fff;border-radius:16px;padding:16px;text-align:center;margin:14px 0}.totalbox b{font-size:26px;font-weight:800}.toast{position:fixed;z-index:200;left:50%;bottom:82px;transform:translateX(-50%);background:#111;color:#fff;padding:11px 18px;border-radius:99px;font-size:12.5px;opacity:0;pointer-events:none;transition:.2s;box-shadow:0 6px 20px rgba(0,0,0,.25)}.toast.show{opacity:1}.hide{display:none!important}footer{text-align:center;color:#b5b5bb;font-size:10px;padding:18px}.cupom-print{background:#fff;border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,.08)}.cupom-logo{display:block;width:100%;max-width:220px;margin:0 auto 8px}.cupom-head{text-align:center;padding:16px 14px 10px;border-bottom:2px dashed #e4e4e7}.cupom-head .titulo-cupom{font-size:11px;letter-spacing:2px;color:#9a9aa0;font-weight:700;margin-bottom:4px}.cupom-head .loja-nome{font-weight:800;font-size:16px;color:#1a1a1a}.cupom-head .loja-info{font-size:10.5px;color:#9a9aa0;margin-top:2px}.cupom-body{padding:12px 14px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;white-space:pre-wrap;line-height:1.6;color:#1a1a1a;-webkit-user-select:all;user-select:all}.cupom-foot{padding:10px 14px 16px;text-align:center;font-size:10px;color:#b5b5bb;border-top:1px dashed #e4e4e7}.flyer-canvas{width:300px;height:534px;border-radius:22px;overflow:hidden;position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:24px 18px;color:#fff;margin:0 auto 16px;box-shadow:0 16px 40px rgba(0,0,0,.4);font-family:'Poppins',sans-serif}.flyer-canvas::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle at 15% 10%,rgba(255,255,255,.16) 0%,transparent 45%),radial-gradient(circle at 90% 85%,rgba(255,255,255,.12) 0%,transparent 40%),repeating-linear-gradient(-35deg,rgba(255,255,255,.05) 0 14px,transparent 14px 40px);pointer-events:none;z-index:0}.flyer-tem-fundo-custom::before{background-image:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,.15) 35%,rgba(0,0,0,.15) 65%,rgba(0,0,0,.55) 100%)}.flyer-canvas::after{content:'';position:absolute;left:-20%;top:38%;width:140%;height:26%;background:rgba(255,255,255,.08);transform:rotate(-6deg);pointer-events:none;z-index:0}.flyer-canvas>*{position:relative;z-index:1}.flyer-faixa{align-self:center;max-width:92%;background:linear-gradient(90deg,#fff,#f4f4f4);color:#111;padding:8px 22px;font-size:11px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;clip-path:polygon(0 0,100% 0,94% 50%,100% 100%,0 100%,6% 50%);box-shadow:0 6px 14px rgba(0,0,0,.3)}.flyer-topo{font-family:'Anton',sans-serif;font-size:34px;font-weight:400;text-align:center;text-shadow:0 4px 14px rgba(0,0,0,.5);line-height:1.08;margin-top:2px;text-transform:uppercase;letter-spacing:.5px;-webkit-text-stroke:.5px rgba(0,0,0,.15)}.flyer-produto{display:flex;flex-direction:column;align-items:center;gap:10px}.flyer-foto-wrap{position:relative;width:186px;height:186px;display:flex;align-items:center;justify-content:center}.flyer-foto-glow{position:absolute;inset:-6px;background:conic-gradient(from 0deg,rgba(255,255,255,.9),rgba(255,255,255,.15),rgba(255,255,255,.9),rgba(255,255,255,.15),rgba(255,255,255,.9));border-radius:50%;filter:blur(1px)}.flyer-foto-glow::after{content:'';position:absolute;inset:8px;background:radial-gradient(circle,rgba(255,255,255,.45) 0%,rgba(255,255,255,0) 72%);border-radius:50%}.flyer-foto{position:relative;width:172px;height:172px;border-radius:20px;background-size:contain;background-repeat:no-repeat;background-position:center;background-color:#fff;box-shadow:0 14px 30px rgba(0,0,0,.4);transform:rotate(-2deg)}.flyer-nome{font-family:'Anton',sans-serif;font-weight:400;font-size:21px;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,.45);padding:0 6px;text-transform:uppercase;letter-spacing:.3px}.flyer-preco{font-family:'Anton',sans-serif;font-weight:400;font-size:34px;background:#fff;color:#111;padding:10px 24px;border-radius:16px;box-shadow:0 10px 26px rgba(0,0,0,.45);transform:rotate(-4deg);position:relative;display:inline-flex;align-items:center;justify-content:center}.flyer-preco::before{content:'';position:absolute;inset:-12px;background:inherit;z-index:-2;transform:rotate(22deg);border-radius:22%}.flyer-preco::after{content:'';position:absolute;inset:-12px;background:inherit;z-index:-2;transform:rotate(-22deg);border-radius:22%}.flyer-rodape{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.5);backdrop-filter:blur(2px);border:1px solid rgba(255,255,255,.15);border-radius:16px;padding:10px 12px}.flyer-logo{width:44px;height:44px;object-fit:contain;background:#fff;border-radius:10px;padding:3px;flex:none;box-shadow:0 4px 10px rgba(0,0,0,.3)}.flyer-loja{font-size:10px;line-height:1.5;min-width:0;font-weight:600;overflow:hidden}.flyer-loja b{font-size:11.5px;display:block;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.flyer-promo{display:flex;flex-direction:column;align-items:center;gap:0px;transform:rotate(-3deg)}.flyer-promo-num{font-family:'Anton',sans-serif;font-weight:400;font-size:64px;color:#fff;line-height:.95;text-shadow:0 5px 14px rgba(0,0,0,.5);-webkit-text-stroke:1px rgba(0,0,0,.15)}.flyer-promo-por{font-size:15px;font-weight:800;color:#fff;letter-spacing:4px;margin:2px 0}.flyer-promo-preco{font-family:'Anton',sans-serif;font-weight:400;font-size:32px;background:#fff;color:#111;padding:10px 22px;border-radius:14px;margin-top:6px;box-shadow:0 10px 26px rgba(0,0,0,.45);position:relative;display:inline-flex;align-items:center;justify-content:center;transform:rotate(3deg)}.flyer-promo-preco::before{content:'';position:absolute;inset:-11px;background:inherit;z-index:-2;transform:rotate(22deg);border-radius:22%}.flyer-promo-preco::after{content:'';position:absolute;inset:-11px;background:inherit;z-index:-2;transform:rotate(-22deg);border-radius:22%}
+.cotacao-bg{position:fixed;inset:0;background:#fff;z-index:130;display:flex;flex-direction:column}
+.cotacao-header{padding:14px 14px 10px;border-bottom:1px solid #ececef;display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.cotacao-acoes{display:flex;gap:8px;padding:10px 14px 0;flex-wrap:wrap}
+.cotacao-body{flex:1;overflow:auto;padding:10px 14px 20px}
+.cotacao-table{border-collapse:collapse;width:max-content;min-width:100%;font-size:11.5px}
+.cotacao-table th,.cotacao-table td{border:1px solid #ececef;padding:6px 7px;text-align:center;white-space:nowrap;vertical-align:top}
+.cotacao-table th{background:#f9f9fa;font-weight:800;position:sticky;top:0;z-index:2}
+.cotacao-table td.nome-col,.cotacao-table th.nome-col{position:sticky;left:0;background:#fff;z-index:1;text-align:left;min-width:150px;max-width:190px;white-space:normal;font-weight:700}
+.cotacao-table th.nome-col{background:#f9f9fa;z-index:3}
+.cotacao-input{width:64px;border:1px solid #e4e4e7;border-radius:6px;padding:4px;font-size:11.5px;text-align:center;background:#fafafa;color:#1a1a1a}
+.cotacao-input.fornecedor-nome{width:96px;font-weight:800}
+.cotacao-cell-min{background:var(--verdebg)!important;color:var(--verde)}
+.cotacao-cell-max{background:var(--vermelhobg)!important;color:var(--vermelho)}
+.cotacao-resumo{position:sticky;bottom:0;background:#111;color:#fff;padding:16px;border-radius:16px;margin-top:14px;text-align:center}
 </style>
 </head>
 <body>
@@ -103,6 +117,8 @@ let FAVORITOS=load('favoritos-vh-v2',[]);
 function salvarFavoritos(){save('favoritos-vh-v2',FAVORITOS)}
 function alternarFavorito(id){const i=FAVORITOS.indexOf(id);if(i>=0)FAVORITOS.splice(i,1);else FAVORITOS.push(id);salvarFavoritos();render()}
 let CAIXA_HIST=load('caixa-historico-vh-v2',[]);
+let COTACAO=load('cotacao-vh-v2',{fornecedores:[],produtos:{}});
+function salvarCotacao(){save('cotacao-vh-v2',COTACAO)}
 function salvarLoja(){save('loja-vh-v2',LOJA)}
 function salvarClientes(){save('clientes-vh-v2',CLIENTES)}
 function salvarCombos(){save('combos-vh-v2',COMBOS)}
@@ -420,6 +436,128 @@ function abrirCarrinho(){const m=baseModal('🛒 Carrinho de vendas',CARRINHO.le
 function confirmarCarrinho(){const necessidade={};CARRINHO.forEach(i=>{if(i.isCombo){i.componentes.forEach(comp=>necessidade[comp.produtoId]=(necessidade[comp.produtoId]||0)+i.qtd*comp.qtd)}else{necessidade[i.produtoId]=(necessidade[i.produtoId]||0)+i.qtd*i.fator}});for(const id in necessidade){const p=PRODUTOS.find(x=>x.id===id);if(!p)continue;const e=estado(p);if(disponivel(p,e)<necessidade[id])return toast('Estoque insuficiente: '+p.nome)}CARRINHO.forEach(i=>{if(i.isCombo){i.componentes.forEach(comp=>{const p=PRODUTOS.find(x=>x.id===comp.produtoId);if(!p)return;const e=estado(p),baixa=i.qtd*comp.qtd;if(p.cigarro)e.cigarros-=baixa;else if(e.pacote){const total=e.qtd*e.pacote+e.resto-baixa;e.qtd=Math.floor(total/e.pacote);e.resto=total%e.pacote}else e.qtd-=baixa});return}const p=PRODUTOS.find(x=>x.id===i.produtoId),e=estado(p),baixa=i.qtd*i.fator;if(p.cigarro)e.cigarros-=baixa;else if(e.pacote){const total=e.qtd*e.pacote+e.resto-baixa;e.qtd=Math.floor(total/e.pacote);e.resto=total%e.pacote}else e.qtd-=baixa});const subtotal=CARRINHO.reduce((s,i)=>s+i.total,0),desconto=Number(window._descontoAtual)||0,pagamento=window._pagamentoAtual||'dinheiro',cliente=(window._clienteAtual||'').trim(),clienteId=window._clienteIdAtual||null,numero=PROX_VENDA;PROX_VENDA++;const venda={id:Date.now(),numero,data:hoje(),ts:Date.now(),itens:CARRINHO.map(x=>({...x})),subtotal,desconto,total:subtotal-desconto,cliente,clienteId,pagamento,pago:pagamento!=='fiado'};VENDAS.push(venda);CARRINHO=[];window._clienteAtual='';window._clienteIdAtual=null;window._descontoAtual='';window._pagamentoAtual='dinheiro';salvar();render();abrirCupom(venda);toast('Venda confirmada')}
 const ROTULO_FARDO_CAT={latao:'PAC',longneck:'PAC','imperio-lata':'PAC',chopinho:'CX',chopp:'FD',refri2l:'FD',retornavel:'CX',refrilata:'PAC',agua:'FD',energetico:'FD',isotonico:'FD',gelo:'FD',diversos:'FD'};
 function rotuloFardo(p){const ed=CATALOGO.editados[p.id];if(ed&&ed.rotulo)return ed.rotulo;return ROTULO_FARDO_CAT[p.catId]||'FD'}
+function sincronizarCotacao(){
+  let mudou=false;
+  PRODUTOS.forEach(p=>{
+    if(!COTACAO.produtos[p.id]){
+      const e=estado(p);
+      let embalagem,qtdEmbalagem;
+      if(p.cigarro){embalagem='PCT';qtdEmbalagem=10}
+      else if(p.unidadeOnly||!e.pacote){embalagem='UN';qtdEmbalagem=1}
+      else{embalagem=rotuloFardo(p);qtdEmbalagem=e.pacote}
+      COTACAO.produtos[p.id]={embalagem,qtdEmbalagem,precos:{},qtdComprar:''};
+      mudou=true;
+    }
+  });
+  if(mudou)salvarCotacao();
+}
+function abrirCotacao(){
+  sincronizarCotacao();
+  fecharModal();
+  const bg=document.createElement('div');bg.className='cotacao-bg';
+  const header=document.createElement('div');header.className='cotacao-header';
+  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">📋 Cotação de fornecedores</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Compare preços por fornecedor e monte seu pedido de compra. Tudo aqui é editável.</p>';
+  const btnFechar=document.createElement('button');btnFechar.textContent='✕ Fechar';btnFechar.style.cssText='border:0;background:#f4f4f6;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;flex:none;min-height:40px';
+  btnFechar.onclick=()=>bg.remove();
+  header.append(tit,btnFechar);
+  bg.appendChild(header);
+  const acoes=document.createElement('div');acoes.className='cotacao-acoes';
+  const btnAddForn=document.createElement('button');btnAddForn.textContent='+ Fornecedor';btnAddForn.style.cssText='border:0;background:#111;color:#fff;border-radius:10px;padding:9px 14px;font-weight:800;font-size:12px;cursor:pointer;min-height:38px';
+  btnAddForn.onclick=()=>{COTACAO.fornecedores.push({id:'f'+Date.now(),nome:''});salvarCotacao();montarTabela()};
+  acoes.appendChild(btnAddForn);
+  bg.appendChild(acoes);
+  const body=document.createElement('div');body.className='cotacao-body';
+  bg.appendChild(body);
+  const resumo=document.createElement('div');resumo.className='cotacao-resumo';
+  function recalcularResumo(){
+    let total=0;
+    PRODUTOS.forEach(p=>{
+      const c=COTACAO.produtos[p.id];if(!c)return;
+      const qtd=Number(c.qtdComprar)||0;if(qtd<=0)return;
+      const precos=Object.values(c.precos).map(x=>Number(x&&x.valor)).filter(v=>v>0);
+      if(!precos.length)return;
+      total+=qtd*Math.min(...precos);
+    });
+    resumo.innerHTML='<small style="opacity:.75;text-transform:uppercase;font-size:10px;font-weight:700;letter-spacing:.4px">Total do pedido (sempre no melhor preço de cada item)</small><br><b style="font-size:23px">'+dinheiro(total)+'</b>';
+  }
+  function montarTabela(){
+    body.innerHTML='';
+    if(!COTACAO.fornecedores.length){
+      const vazio=document.createElement('p');vazio.style.cssText='font-size:13px;color:#9a9aa0;text-align:center;padding:30px 10px';vazio.textContent='Adicione pelo menos um fornecedor pra começar a comparar preços.';
+      body.appendChild(vazio);body.appendChild(resumo);recalcularResumo();return;
+    }
+    const wrap=document.createElement('div');wrap.style.overflowX='auto';
+    const table=document.createElement('table');table.className='cotacao-table';
+    const thead=document.createElement('thead');const trh=document.createElement('tr');
+    trh.innerHTML='<th class="nome-col">Produto</th><th>Embalagem</th><th>Qtd/emb.</th>';
+    COTACAO.fornecedores.forEach((f,idx)=>{
+      const th=document.createElement('th');
+      const inp=document.createElement('input');inp.className='cotacao-input fornecedor-nome';inp.placeholder='Fornecedor '+(idx+1);inp.value=f.nome;
+      inp.oninput=()=>{f.nome=inp.value;salvarCotacao()};
+      const del=document.createElement('button');del.textContent='🗑️';del.title='Remover fornecedor';del.style.cssText='border:0;background:none;cursor:pointer;font-size:12px;display:block;margin:4px auto 0';
+      del.onclick=()=>{if(!confirm('Remover o fornecedor "'+(f.nome||'sem nome')+'" e todos os preços dele?'))return;COTACAO.fornecedores=COTACAO.fornecedores.filter(x=>x.id!==f.id);Object.values(COTACAO.produtos).forEach(c=>{delete c.precos[f.id]});salvarCotacao();montarTabela()};
+      th.append(inp,del);trh.appendChild(th);
+    });
+    const thComprar=document.createElement('th');thComprar.innerHTML='Comprar<br><small style="font-weight:400">(qtd. de embalagens)</small>';trh.appendChild(thComprar);
+    const thMelhor=document.createElement('th');thMelhor.style.textAlign='left';thMelhor.textContent='Melhor preço / Total';trh.appendChild(thMelhor);
+    thead.appendChild(trh);table.appendChild(thead);
+    const tbody=document.createElement('tbody');
+    PRODUTOS.forEach(p=>{
+      const c=COTACAO.produtos[p.id];if(!c)return;
+      const tr=document.createElement('tr');
+      const tdNome=document.createElement('td');tdNome.className='nome-col';tdNome.textContent=p.nome;tr.appendChild(tdNome);
+      const tdEmb=document.createElement('td');
+      const inpEmb=document.createElement('input');inpEmb.className='cotacao-input';inpEmb.style.width='48px';inpEmb.value=c.embalagem;
+      inpEmb.oninput=()=>{c.embalagem=inpEmb.value;salvarCotacao()};
+      tdEmb.appendChild(inpEmb);tr.appendChild(tdEmb);
+      const tdQtdEmb=document.createElement('td');
+      const inpQtdEmb=document.createElement('input');inpQtdEmb.className='cotacao-input';inpQtdEmb.type='number';inpQtdEmb.style.width='52px';inpQtdEmb.value=c.qtdEmbalagem;
+      inpQtdEmb.oninput=()=>{c.qtdEmbalagem=Number(inpQtdEmb.value)||1;salvarCotacao();atualizarLinha()};
+      tdQtdEmb.appendChild(inpQtdEmb);tr.appendChild(tdQtdEmb);
+      const precoCells=[];
+      COTACAO.fornecedores.forEach(f=>{
+        const td=document.createElement('td');
+        if(!c.precos[f.id])c.precos[f.id]={valor:'',data:''};
+        const reg=c.precos[f.id];
+        const inpV=document.createElement('input');inpV.className='cotacao-input';inpV.type='number';inpV.step='0.01';inpV.placeholder='R$';inpV.value=reg.valor;
+        const inpD=document.createElement('input');inpD.type='date';inpD.title='Data da última compra (opcional)';inpD.style.cssText='width:100%;border:1px solid #e4e4e7;border-radius:6px;font-size:9px;padding:2px;margin-top:3px;background:#fafafa;color:#1a1a1a';inpD.value=reg.data||'';
+        const small=document.createElement('div');small.style.cssText='font-size:9.5px;color:#9a9aa0;margin-top:2px';
+        inpV.oninput=()=>{reg.valor=inpV.value;salvarCotacao();atualizarLinha();recalcularResumo()};
+        inpD.onchange=()=>{reg.data=inpD.value;salvarCotacao()};
+        td.append(inpV,small,inpD);tr.appendChild(td);
+        precoCells.push({fornecedorId:f.id,td,small});
+      });
+      const tdQtdComprar=document.createElement('td');
+      const inpQtdComprar=document.createElement('input');inpQtdComprar.className='cotacao-input';inpQtdComprar.type='number';inpQtdComprar.style.width='52px';inpQtdComprar.value=c.qtdComprar;
+      inpQtdComprar.oninput=()=>{c.qtdComprar=inpQtdComprar.value;salvarCotacao();atualizarLinha();recalcularResumo()};
+      tdQtdComprar.appendChild(inpQtdComprar);tr.appendChild(tdQtdComprar);
+      const tdResultado=document.createElement('td');tdResultado.style.cssText='text-align:left;font-size:11.5px;min-width:160px;white-space:normal';tr.appendChild(tdResultado);
+      function atualizarLinha(){
+        precoCells.forEach(pc=>{
+          pc.td.classList.remove('cotacao-cell-min','cotacao-cell-max');
+          const v=Number(c.precos[pc.fornecedorId].valor);
+          pc.small.textContent=v>0?dinheiro(v/(c.qtdEmbalagem||1))+'/un':'';
+        });
+        const validos=precoCells.map(pc=>({...pc,valor:Number(c.precos[pc.fornecedorId].valor)})).filter(x=>x.valor>0);
+        if(validos.length){
+          const min=Math.min(...validos.map(x=>x.valor)),max=Math.max(...validos.map(x=>x.valor));
+          validos.forEach(x=>{if(x.valor===min)x.td.classList.add('cotacao-cell-min');if(x.valor===max&&max!==min)x.td.classList.add('cotacao-cell-max')});
+          const fMin=COTACAO.fornecedores.find(f=>f.id===validos.find(x=>x.valor===min).fornecedorId);
+          const qtd=Number(c.qtdComprar)||0;
+          tdResultado.innerHTML='<b>'+(fMin.nome||'Fornecedor sem nome')+'</b> · '+dinheiro(min)+(qtd>0?'<br>'+qtd+' × '+dinheiro(min)+' = <b>'+dinheiro(min*qtd)+'</b>':'');
+        } else {
+          tdResultado.textContent='Sem preços ainda';
+        }
+      }
+      atualizarLinha();
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);wrap.appendChild(table);body.appendChild(wrap);
+    body.appendChild(resumo);recalcularResumo();
+  }
+  montarTabela();
+  document.body.appendChild(bg);
+}
 function labelModo(item){if(item.modo==='pacote')return'PCT';if(item.modo==='maco')return'MC';if(item.modo!=='fardo')return'UN';const p=PRODUTOS.find(x=>x.id===item.produtoId);return p?rotuloFardo(p):'FD'}
 function gerarOrcamentoTexto(o){const l=[];l.push('*ORÇAMENTO*');if(LOJA.nome)l.push(LOJA.nome);if(LOJA.telefone)l.push('Tel: '+LOJA.telefone);l.push('');l.push('Orçamento Nº '+o.numero);l.push(new Date(o.ts).toLocaleDateString('pt-BR')+' '+new Date(o.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));l.push('');o.itens.forEach(i=>{l.push(i.nome);l.push('  '+i.qtd+' '+labelModo(i)+' x '+dinheiro(i.preco)+' = '+dinheiro(i.total))});l.push('');l.push('Subtotal: '+dinheiro(o.subtotal));if(o.desconto>0)l.push('Desconto: '+dinheiro(o.desconto));l.push('*Total: '+dinheiro(o.total)+'*');l.push('');if(o.cliente)l.push('Cliente: '+o.cliente);l.push('');l.push('⚠️ Valores sujeitos à confirmação de estoque no momento da compra.');return l.join('\n')}
 function abrirCupomOrcamento(o){const m=baseModal('📝 Orçamento','Envie pro cliente. Isso ainda não é uma venda — o estoque não foi alterado.');const box=document.createElement('div');box.className='cupom-print';const head=document.createElement('div');head.className='cupom-head';head.innerHTML='<img class="cupom-logo" src="'+LOGO_CUPOM+'" alt="Logo"><div class="titulo-cupom">ORÇAMENTO</div>'+(LOJA.nome?'<div class="loja-nome">'+LOJA.nome+'</div>':'')+(LOJA.telefone?'<div class="loja-info">Tel: '+LOJA.telefone+'</div>':'');box.appendChild(head);const corpo=document.createElement('div');corpo.className='cupom-body';corpo.textContent=gerarOrcamentoTexto(o);box.appendChild(corpo);m.appendChild(box);const btnImg=document.createElement('button');btnImg.textContent='📷 Enviar imagem no WhatsApp';btnImg.style.cssText='width:100%;padding:13px;border:0;border-radius:10px;background:var(--verde);color:#fff;font-weight:800;font-size:14px;margin-bottom:10px';btnImg.onclick=()=>compartilharImagem(box,'orcamento_'+o.numero+'.png','Orçamento Nº '+o.numero);m.appendChild(btnImg);const bs=document.createElement('div');bs.className='botoes';bs.style.marginBottom='8px';bs.innerHTML='<button class="cancelar">📋 Copiar texto</button><button class="confirmar">📤 WhatsApp (texto)</button>';bs.firstChild.onclick=()=>copiarTexto(gerarOrcamentoTexto(o));bs.lastChild.onclick=()=>{const texto=encodeURIComponent(gerarOrcamentoTexto(o));if(navigator.share){navigator.share({text:gerarOrcamentoTexto(o),title:'Orçamento'}).catch(()=>{})}else{window.open('https://wa.me/?text='+texto,'_blank')}};m.appendChild(bs);const btnConv=document.createElement('button');btnConv.textContent='✅ Converter em venda agora';btnConv.style.cssText='width:100%;padding:12px;border:0;border-radius:10px;background:var(--verde);color:#fff;font-weight:800;margin-bottom:8px';btnConv.onclick=()=>converterOrcamento(o.id);m.appendChild(btnConv);const fechar=document.createElement('button');fechar.textContent='Fechar';fechar.style.cssText='width:100%;padding:11px;border:0;border-radius:10px;background:var(--creme2);color:#756c5e;font-weight:800';fechar.onclick=fecharModal;m.appendChild(fechar)}
@@ -621,15 +759,34 @@ function abrirResumoPeriodo(){
     m.appendChild(box);
     m.appendChild(barrasPorDia(vendasPeriodo,diasArray));
     const porProduto={};
-    vendasPeriodo.forEach(v=>v.itens.forEach(i=>{if(!porProduto[i.produtoId])porProduto[i.produtoId]={nome:i.nome,qtd:0};porProduto[i.produtoId].qtd+=i.qtd}));
+    vendasPeriodo.forEach(v=>v.itens.forEach(i=>{
+      const chave=i.produtoId||i.comboId||i.id;
+      if(!porProduto[chave])porProduto[chave]={nome:i.nome,produtoId:i.produtoId,qtd:0,porModo:{}};
+      const pp=porProduto[chave];
+      pp.qtd+=i.qtd;
+      const modo=i.isCombo?'combo':(i.modo||'unidade');
+      pp.porModo[modo]=(pp.porModo[modo]||0)+i.qtd;
+    }));
+    function rotuloModo(produtoId,modo,qtd){
+      const p=PRODUTOS.find(x=>x.id===produtoId);
+      if(modo==='combo')return qtd+' kit'+(qtd!==1?'s':'');
+      if(p&&p.cigarro){
+        if(modo==='pacote')return qtd+' pac.';
+        if(modo==='maco')return qtd+' maço'+(qtd!==1?'s':'');
+        return qtd+' un.';
+      }
+      if(modo==='fardo')return qtd+' '+(p?rotuloFardo(p):'FD');
+      return qtd+' un.';
+    }
     const ranking=Object.values(porProduto).sort((a,b)=>b.qtd-a.qtd).slice(0,8);
     if(ranking.length){
       const tit=document.createElement('div');tit.style.cssText='font-size:12px;font-weight:800;text-transform:uppercase;color:#7a7264;margin:14px 0 8px;border-bottom:2px solid var(--amarelo);padding-bottom:4px';tit.textContent='🏆 Mais vendidos no período';
       m.appendChild(tit);
       ranking.forEach((item,idx)=>{
-        const l=document.createElement('div');l.style.cssText='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ece2cc;font-size:12.5px';
+        const l=document.createElement('div');l.style.cssText='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ece2cc;font-size:12.5px;gap:8px';
         const medalha=idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':(idx+1)+'.';
-        l.innerHTML='<span>'+medalha+' '+item.nome+'</span><b>'+item.qtd+' un.</b>';
+        const detalhe=Object.entries(item.porModo).map(([modo,qtd])=>rotuloModo(item.produtoId,modo,qtd)).join(' + ');
+        l.innerHTML='<span>'+medalha+' '+item.nome+'</span><b style="text-align:right;white-space:nowrap">'+detalhe+'</b>';
         m.appendChild(l);
       });
     }
@@ -1309,6 +1466,7 @@ function abrirMenu(){
     ['🎨','Criar Flyer / Story',abrirCriarFlyer],
     ['📅','Fechar o dia / ver vendas',()=>abrirVendas()],
     ['📊','Resumo por período (semana/mês)',abrirResumoPeriodo],
+    ['📋','Cotação de fornecedores',abrirCotacao],
     ['💵','Caixa'+(CAIXA.aberto?' (aberto)':' (fechado)'),abrirTelaCaixa],
     ['💰','Fiado (a receber)'+(pendFiado>0?' · '+pendFiado+' pendente'+(pendFiado>1?'s':''):''),abrirFiados],
     ['📝','Orçamentos'+(ORCAMENTOS.length?' · '+ORCAMENTOS.length:''),abrirOrcamentos],
