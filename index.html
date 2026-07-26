@@ -129,7 +129,7 @@ function salvarClientes(){save('clientes-vh-v2',CLIENTES)}
 function salvarCombos(){save('combos-vh-v2',COMBOS)}
 function salvarCaixaTudo(){save('caixa-vh-v2',CAIXA);save('caixa-historico-vh-v2',CAIXA_HIST)}
 function fotoAtual(p,e){return e.foto||FOTOS_PADRAO[p.id]||null}
-function estado(p){if(!ESTADO[p.id]){const b=PRECOS[p.id]||{},t=PRECOS_TEMP[p.id]||{};ESTADO[p.id]={qtd:0,resto:0,cigarros:0,minimo:0,estoqueRef:0,pacote:p.pacote,foto:null,precoUnidade:b.unidade??null,precoFardo:b.fardo??null,precoQuente:t.quente??null,precoGelado:t.gelado??null,precoMaco:null,pausado:false}}const e=ESTADO[p.id];['resto','cigarros','minimo','estoqueRef'].forEach(k=>e[k]??=0);e.pacote??=p.pacote;e.pausado??=false;return e}
+function estado(p){if(!ESTADO[p.id]){const b=PRECOS[p.id]||{},t=PRECOS_TEMP[p.id]||{};ESTADO[p.id]={qtd:0,resto:0,cigarros:0,minimo:0,estoqueRef:0,custoUltimaCompra:null,pacote:p.pacote,foto:null,precoUnidade:b.unidade??null,precoFardo:b.fardo??null,precoQuente:t.quente??null,precoGelado:t.gelado??null,precoMaco:null,pausado:false}}const e=ESTADO[p.id];['resto','cigarros','minimo','estoqueRef'].forEach(k=>e[k]??=0);e.custoUltimaCompra??=null;e.pacote??=p.pacote;e.pausado??=false;return e}
 function salvar(){save('estoque-vh-v2',ESTADO);save('vendas-vh-v2',VENDAS);save('carrinho-vh-v2',CARRINHO);save('contador-venda-vh-v2',PROX_VENDA);save('orcamentos-vh-v2',ORCAMENTOS);save('contador-orcamento-vh-v2',PROX_ORCAMENTO);save('caixa-vh-v2',CAIXA);save('caixa-historico-vh-v2',CAIXA_HIST)}function autoSalvar(){clearTimeout(saveTimer);saveTimer=setTimeout(salvar,120)}
 const dinheiro=n=>'R$ '+Number(n||0).toFixed(2).replace('.',','),hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(e.t);e.t=setTimeout(()=>e.classList.remove('show'),1800)}
@@ -142,6 +142,17 @@ function sugestaoCompra(p,e){
   if(falta<=0)return '';
   const unidade=p.cigarro?('pacote'+(falta!==1?'s':'')):((p.unidadeOnly||!e.pacote)?('unidade'+(falta!==1?'s':'')):('fardo'+(falta!==1?'s':'')));
   return 'comprar '+falta+' '+unidade+' pra voltar aos '+e.estoqueRef+' de sempre';
+}
+function unidadeCompra(p,e,falta){return p.cigarro?('pacote'+(falta!==1?'s':'')):((p.unidadeOnly||!e.pacote)?('unidade'+(falta!==1?'s':'')):('fardo'+(falta!==1?'s':'')))}
+function calcularFaltaCompra(p,e){
+  const atual=nivelEstoque(p,e);
+  if(e.estoqueRef>0){
+    return {falta:Math.max(e.estoqueRef-atual,0),alvo:e.estoqueRef,tipo:'referencia'};
+  }
+  if(e.minimo>0){
+    return {falta:Math.max(e.minimo-atual,0),alvo:e.minimo,tipo:'minimo'};
+  }
+  return {falta:0,alvo:0,tipo:'nenhum'};
 }
 function disponivel(p,e){return p.cigarro?e.cigarros:(p.unidadeOnly||!e.pacote?e.qtd:e.qtd*e.pacote+e.resto)}
 function render(){const main=document.getElementById('main'),chips=document.getElementById('chips');main.innerHTML='';chips.innerHTML='';const favoritosProdutos=FAVORITOS.map(id=>PRODUTOS.find(x=>x.id===id)).filter(Boolean);if(favoritosProdutos.length){const sec=document.createElement('section');sec.className='categoria';sec.id='cat-favoritos';sec.innerHTML='<div class="titulo">⭐ Favoritos (acesso rápido)</div>';favoritosProdutos.forEach(p=>sec.appendChild(card(p)));main.appendChild(sec);const ch=document.createElement('button');ch.className='chip';ch.textContent='⭐ Favoritos';ch.onclick=()=>document.getElementById('cat-favoritos').scrollIntoView({behavior:'smooth'});chips.appendChild(ch)}if(COMBOS.length){const sec=document.createElement('section');sec.className='categoria';sec.id='cat-combos';sec.innerHTML='<div class="titulo">🎁 Kits/Combos</div>';COMBOS.forEach(combo=>sec.appendChild(cardCombo(combo)));main.appendChild(sec);const ch=document.createElement('button');ch.className='chip';ch.textContent='🎁 Combos';ch.onclick=()=>document.getElementById('cat-combos').scrollIntoView({behavior:'smooth'});chips.appendChild(ch)}CATEGORIAS.forEach(c=>{const ch=document.createElement('button');ch.className='chip';ch.textContent=c.emoji+' '+tituloCategoria(c);ch.onclick=()=>document.getElementById('cat-'+c.id).scrollIntoView({behavior:'smooth'});chips.appendChild(ch);const sec=document.createElement('section');sec.className='categoria';sec.id='cat-'+c.id;sec.innerHTML='<div class="titulo">'+c.emoji+' '+tituloCategoria(c)+'</div>';PRODUTOS.filter(p=>p.catId===c.id).forEach(p=>sec.appendChild(card(p)));main.appendChild(sec)});resumo();atualizarCarrinho();aplicarFiltro()}
@@ -1507,8 +1518,9 @@ function abrirMenu(){
   const vendidoHoje=VENDAS.filter(v=>v.data===hoje()).reduce((s,v)=>s+v.total,0);
   const resumoWrap=document.createElement('div');
   resumoWrap.className='resumo';
-  resumoWrap.innerHTML='<div class="pill"><b>'+PRODUTOS.length+'</b><span>Itens</span></div><div class="pill"><b style="color:'+(baixoCount>0?'var(--vermelho)':'var(--amarelo)')+'">'+baixoCount+'</b><span>Estoque baixo</span></div><div class="pill"><b>'+dinheiro(vendidoHoje)+'</b><span>Vendido hoje</span></div>';
+  resumoWrap.innerHTML='<div class="pill"><b>'+PRODUTOS.length+'</b><span>Itens</span></div><div class="pill" id="pillEstoqueBaixo" style="cursor:pointer"'+(baixoCount>0?' tabindex="0" role="button" aria-label="Ver produtos com estoque baixo"':'')+'><b style="color:'+(baixoCount>0?'var(--vermelho)':'var(--amarelo)')+'">'+baixoCount+'</b><span>Estoque baixo'+(baixoCount>0?' ›':'')+'</span></div><div class="pill"><b>'+dinheiro(vendidoHoje)+'</b><span>Vendido hoje</span></div>';
   m.appendChild(resumoWrap);
+  if(baixoCount>0)resumoWrap.querySelector('#pillEstoqueBaixo').onclick=abrirEstoqueBaixo;
   const lista=document.createElement('div');
   lista.className='menu-lista';
   const itensMenu=[
@@ -1543,6 +1555,78 @@ function atualizarBadgeMenu(){
   if(!badge)return;
   if(baixoCount>0){badge.textContent=baixoCount;badge.classList.remove('hide')}
   else{badge.classList.add('hide')}
+}
+function abrirEstoqueBaixo(){
+  fecharModal();
+  const itens=PRODUTOS.filter(p=>{const e=estado(p);return e.minimo>0&&nivelEstoque(p,e)<=e.minimo});
+  itens.sort((a,b)=>nivelEstoque(a,estado(a))-nivelEstoque(b,estado(b)));
+  const bg=document.createElement('div');bg.className='cotacao-bg';
+  const header=document.createElement('div');header.className='cotacao-header';
+  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">⚠️ Estoque baixo ('+itens.length+')</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">O que comprar primeiro, com base no que já vendeu.</p>';
+  const btnFechar=document.createElement('button');btnFechar.textContent='✕ Fechar';btnFechar.style.cssText='border:0;background:#f4f4f6;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;flex:none;min-height:40px';
+  btnFechar.onclick=()=>bg.remove();
+  header.append(tit,btnFechar);
+  bg.appendChild(header);
+  const body=document.createElement('div');body.className='cotacao-body';
+  bg.appendChild(body);
+  if(!itens.length){
+    const vazio=document.createElement('p');vazio.style.cssText='font-size:13px;color:#9a9aa0;text-align:center;padding:30px 10px';vazio.textContent='Nada em falta agora. 🎉';
+    body.appendChild(vazio);
+  }
+  const resumo=document.createElement('div');resumo.className='cotacao-resumo';
+  function recalcularResumo(){
+    let total=0,semCusto=0;
+    itens.forEach(p=>{const e=estado(p),{falta}=calcularFaltaCompra(p,e);if(falta<=0)return;const custo=Number(e.custoUltimaCompra);if(custo>0)total+=falta*custo;else semCusto++});
+    resumo.innerHTML='<small style="opacity:.75;text-transform:uppercase;font-size:10px;font-weight:700;letter-spacing:.4px">Custo estimado pra repor tudo</small><br><b style="font-size:23px">'+dinheiro(total)+'</b>'+(semCusto>0?'<br><small style="opacity:.6;font-size:10px">'+semCusto+' item(ns) sem preço informado ainda</small>':'');
+  }
+  itens.forEach(p=>{
+    const e=estado(p);
+    const {falta,alvo,tipo}=calcularFaltaCompra(p,e);
+    const card=document.createElement('div');card.className='cotacao-card';
+    const topo=document.createElement('div');topo.style.cssText='display:flex;gap:10px;align-items:center;margin-bottom:9px';
+    const fotoMostrar=fotoAtual(p,e);
+    const foto=document.createElement('div');foto.style.cssText='width:46px;height:46px;border-radius:12px;background:#fff;border:1px solid #f0f0f2;flex:none;display:grid;place-items:center;font-size:20px;overflow:hidden';
+    foto.innerHTML=fotoMostrar?'<div style="width:100%;height:100%;background-image:url(\''+fotoMostrar+'\');background-size:contain;background-repeat:no-repeat;background-position:center"></div>':p.emoji;
+    const nomeWrap=document.createElement('div');nomeWrap.style.cssText='min-width:0';
+    nomeWrap.innerHTML='<div style="font-weight:800;font-size:13.5px;line-height:1.3">'+p.nome+'</div><div style="font-size:11px;color:#9a9aa0;margin-top:2px">Tem '+estoqueTexto(p,e)+(tipo==='minimo'?' · sem referência definida, usando o mínimo':'')+'</div>';
+    topo.append(foto,nomeWrap);
+    card.appendChild(topo);
+    if(falta>0){
+      const faltaBox=document.createElement('div');faltaBox.style.cssText='background:var(--vermelhobg);color:var(--vermelho);border-radius:10px;padding:8px 10px;font-size:12.5px;font-weight:800;margin-bottom:9px';
+      faltaBox.textContent='📦 Comprar '+falta+' '+unidadeCompra(p,e,falta)+' pra chegar a '+alvo;
+      card.appendChild(faltaBox);
+    }
+    const campos=document.createElement('div');campos.className='cotacao-campos';
+    const cCusto=document.createElement('div');cCusto.className='cotacao-campo full';cCusto.innerHTML='<label>Preço pago na última compra (R$)</label>';
+    const inpCusto=document.createElement('input');inpCusto.type='number';inpCusto.step='0.01';inpCusto.placeholder='0,00';inpCusto.value=e.custoUltimaCompra??'';
+    cCusto.appendChild(inpCusto);
+    campos.appendChild(cCusto);
+    card.appendChild(campos);
+    const custoLinha=document.createElement('div');custoLinha.className='cotacao-total-linha';custoLinha.style.textAlign='left';
+    function atualizarCustoLinha(){
+      const custo=Number(inpCusto.value);
+      custoLinha.textContent=(custo>0&&falta>0)?('Custo estimado: '+dinheiro(custo*falta)):'';
+    }
+    atualizarCustoLinha();
+    card.appendChild(custoLinha);
+    inpCusto.oninput=()=>{e.custoUltimaCompra=inpCusto.value?Number(inpCusto.value):null;autoSalvar();atualizarCustoLinha();recalcularResumo()};
+    const btnRepor=document.createElement('button');btnRepor.textContent='➕ Repor agora';btnRepor.style.cssText='margin-top:9px;width:100%;border:0;background:var(--verdebg);color:var(--verde);border-radius:10px;padding:10px;font-weight:800;font-size:12.5px;cursor:pointer';
+    btnRepor.onclick=()=>abrirReposicao(p);
+    card.appendChild(btnRepor);
+    body.appendChild(card);
+  });
+  if(itens.length){
+    body.appendChild(resumo);recalcularResumo();
+    const btnCompartilhar=document.createElement('button');btnCompartilhar.textContent='📤 Enviar lista de compras (WhatsApp)';btnCompartilhar.style.cssText='width:100%;margin-top:10px;border:0;background:#111;color:#fff;border-radius:10px;padding:12px;font-weight:800;font-size:13px;cursor:pointer';
+    btnCompartilhar.onclick=()=>{
+      let txt='📋 Lista de compras — '+(LOJA.nome||'VH Bebidas')+'\n\n';
+      itens.forEach(p=>{const e=estado(p),{falta,alvo}=calcularFaltaCompra(p,e);if(falta>0)txt+='• '+p.nome+' — '+falta+' '+unidadeCompra(p,e,falta)+' (alvo: '+alvo+')\n'});
+      const link=encodeURIComponent(txt);
+      if(navigator.share){navigator.share({text:txt,title:'Lista de compras'}).catch(()=>{})}else{window.open('https://wa.me/?text='+link,'_blank')}
+    };
+    body.appendChild(btnCompartilhar);
+  }
+  document.body.appendChild(bg);
 }
 
 function precoExibicaoLinhas(p,e){
