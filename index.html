@@ -859,9 +859,31 @@ function abrirVendas(data=hoje()){
     d.innerHTML='<div class="cart-top"><span><b>Venda Nº'+(v.numero??'')+' · '+new Date(v.ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'</b>'+statusTag+(v.cliente?'<br>Cliente: '+v.cliente:'')+'<br><small>'+v.itens.map(i=>i.qtd+'× '+i.nome).join('<br>')+'</small></span><b>'+dinheiro(v.total)+'</b></div>';
     const btns=document.createElement('div');btns.style.cssText='display:flex;gap:6px;margin-top:6px;flex-wrap:wrap';
     const bCupom=document.createElement('button');bCupom.textContent='🧾 Ver cupom';bCupom.style.cssText='flex:1;border:0;border-radius:7px;padding:6px 9px;background:var(--creme2);color:#7a7264;font-weight:800';bCupom.onclick=()=>abrirCupom(v);
+    const bData=document.createElement('button');bData.textContent='📅 Mudar data';bData.style.cssText='flex:1;border:0;border-radius:7px;padding:6px 9px;background:var(--azulbg);color:var(--azul);font-weight:800';bData.onclick=()=>editarDataVenda(v.id,data);
     const bExcluir=document.createElement('button');bExcluir.className='excluir';bExcluir.textContent='🗑️ Excluir';bExcluir.style.flex='1';bExcluir.onclick=()=>cancelarVenda(v.id,data);
-    btns.append(bCupom,bExcluir);d.appendChild(btns);m.appendChild(d);
+    btns.append(bCupom,bData,bExcluir);d.appendChild(btns);m.appendChild(d);
   });
+}
+function editarDataVenda(id,dataAtual){
+  const v=VENDAS.find(x=>x.id===id);if(!v)return;
+  if(DIAS_FECHADOS[dataAtual])return toast('Esse dia já foi fechado — reabre ele primeiro (botão 🔓) pra poder editar');
+  const m=baseModal('📅 Mudar a data da venda','Venda Nº'+(v.numero??'')+' · '+dinheiro(v.total)+'. Isso só muda o dia em que ela é contabilizada — não mexe no estoque nem nos itens vendidos.');
+  const inp=document.createElement('input');inp.className='campo';inp.type='date';inp.value=v.data;
+  m.appendChild(inp);
+  const bs=document.createElement('div');bs.className='botoes';
+  bs.innerHTML='<button class="cancelar">Cancelar</button><button class="confirmar">Salvar nova data</button>';
+  bs.firstChild.onclick=()=>abrirVendas(dataAtual);
+  bs.lastChild.onclick=()=>{
+    const novaData=inp.value;
+    if(!novaData)return toast('Escolhe uma data');
+    if(DIAS_FECHADOS[novaData])return toast('O dia '+new Date(novaData+'T00:00:00').toLocaleDateString('pt-BR')+' já está fechado — reabre ele primeiro (botão 🔓)');
+    const horaAtual=new Date(v.ts);
+    const [ano,mes,dia]=novaData.split('-').map(Number);
+    v.data=novaData;
+    v.ts=new Date(ano,mes-1,dia,horaAtual.getHours(),horaAtual.getMinutes(),horaAtual.getSeconds()).getTime();
+    salvar();toast('Data da venda atualizada');abrirVendas(novaData);
+  };
+  m.appendChild(bs);
 }
 function cancelarVenda(id,data){const v=VENDAS.find(x=>x.id===id);if(!v)return;if(DIAS_FECHADOS[data])return toast('Esse dia já foi fechado — reabre ele primeiro (botão 🔓) pra poder excluir vendas');if(!confirm('Cancelar esta venda e devolver todos os itens ao estoque?'))return;v.itens.forEach(i=>{if(i.isCombo){i.componentes.forEach(comp=>{const p=PRODUTOS.find(x=>x.id===comp.produtoId);if(!p)return;const e=estado(p),volta=i.qtd*comp.qtd;if(p.cigarro)e.cigarros+=volta;else if(e.pacote){const total=e.qtd*e.pacote+e.resto+volta;e.qtd=Math.floor(total/e.pacote);e.resto=total%e.pacote}else e.qtd+=volta});return}const p=PRODUTOS.find(x=>x.id===i.produtoId),e=estado(p),volta=i.qtd*i.fator;if(p.cigarro)e.cigarros+=volta;else if(e.pacote){const total=e.qtd*e.pacote+e.resto+volta;e.qtd=Math.floor(total/e.pacote);e.resto=total%e.pacote}else e.qtd+=volta});VENDAS=VENDAS.filter(x=>x.id!==id);salvar();render();abrirVendas(data);toast('Venda cancelada e estoque devolvido')}
 function abrirGerenciarCombos(){
