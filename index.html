@@ -35,6 +35,13 @@
 .cotacao-total-linha{margin-top:9px;padding-top:9px;border-top:1px solid #f0f0f2;font-size:14px;font-weight:800;text-align:right}
 .cotacao-del-linha{margin-top:8px;width:100%;border:0;background:var(--vermelhobg);color:var(--vermelho);border-radius:10px;padding:9px;font-weight:800;font-size:11.5px;cursor:pointer}
 .cotacao-resumo{position:sticky;bottom:0;background:#111;color:#fff;padding:16px;border-radius:16px;margin-top:14px;text-align:center}
+.margem-linha{margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f4f4f6}
+.margem-linha:last-child{border-bottom:0;margin-bottom:0;padding-bottom:0}
+.margem-topo{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;font-weight:800;gap:8px}
+.margem-sub{font-size:10px;color:#9a9aa0;margin-top:1px}
+.margem-bar-wrap{background:#f0f0f2;border-radius:8px;height:7px;overflow:hidden;margin-top:5px}
+.margem-bar{height:100%;border-radius:8px}
+.margem-sugestao{font-size:10.5px;margin-top:4px;font-weight:700}
 </style>
 
 </head>
@@ -123,13 +130,16 @@ function salvarFavoritos(){save('favoritos-vh-v2',FAVORITOS)}
 function alternarFavorito(id){const i=FAVORITOS.indexOf(id);if(i>=0)FAVORITOS.splice(i,1);else FAVORITOS.push(id);salvarFavoritos();render()}
 let CAIXA_HIST=load('caixa-historico-vh-v2',[]);
 let COTACAO=load('cotacao-vh-v2',{fornecedores:[],produtos:{}});
+let MARGEM_ALVO=load('margem-alvo-vh-v2',30);
+function salvarMargemAlvo(){save('margem-alvo-vh-v2',MARGEM_ALVO)}
 function salvarCotacao(){save('cotacao-vh-v2',COTACAO)}
 function salvarLoja(){save('loja-vh-v2',LOJA)}
 function salvarClientes(){save('clientes-vh-v2',CLIENTES)}
 function salvarCombos(){save('combos-vh-v2',COMBOS)}
 function salvarCaixaTudo(){save('caixa-vh-v2',CAIXA);save('caixa-historico-vh-v2',CAIXA_HIST)}
 function fotoAtual(p,e){return e.foto||FOTOS_PADRAO[p.id]||null}
-function estado(p){if(!ESTADO[p.id]){const b=PRECOS[p.id]||{},t=PRECOS_TEMP[p.id]||{};ESTADO[p.id]={qtd:0,resto:0,cigarros:0,minimo:0,estoqueRef:0,custoUltimaCompra:null,pacote:p.pacote,foto:null,precoUnidade:b.unidade??null,precoFardo:b.fardo??null,precoQuente:t.quente??null,precoGelado:t.gelado??null,precoMaco:null,pausado:false}}const e=ESTADO[p.id];['resto','cigarros','minimo','estoqueRef'].forEach(k=>e[k]??=0);e.custoUltimaCompra??=null;e.pacote??=p.pacote;e.pausado??=false;return e}
+function estado(p){if(!ESTADO[p.id]){const b=PRECOS[p.id]||{},t=PRECOS_TEMP[p.id]||{};ESTADO[p.id]={qtd:0,resto:0,cigarros:0,minimo:0,estoqueRef:0,custoUltimaCompra:null,margemAlvo:null,pacote:p.pacote,foto:null,precoUnidade:b.unidade??null,precoFardo:b.fardo??null,precoQuente:t.quente??null,precoGelado:t.gelado??null,precoMaco:null,pausado:false}}const e=ESTADO[p.id];['resto','cigarros','minimo','estoqueRef'].forEach(k=>e[k]??=0);e.custoUltimaCompra??=null;e.margemAlvo??=null;e.pacote??=p.pacote;e.pausado??=false;return e}
+function metaProduto(e){return(e.margemAlvo!=null&&e.margemAlvo!=='')?Number(e.margemAlvo):MARGEM_ALVO}
 function salvar(){save('estoque-vh-v2',ESTADO);save('vendas-vh-v2',VENDAS);save('carrinho-vh-v2',CARRINHO);save('contador-venda-vh-v2',PROX_VENDA);save('orcamentos-vh-v2',ORCAMENTOS);save('contador-orcamento-vh-v2',PROX_ORCAMENTO);save('caixa-vh-v2',CAIXA);save('caixa-historico-vh-v2',CAIXA_HIST)}function autoSalvar(){clearTimeout(saveTimer);saveTimer=setTimeout(salvar,120)}
 const dinheiro=n=>'R$ '+Number(n||0).toFixed(2).replace('.',','),hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 function toast(t){const e=document.getElementById('toast');e.textContent=t;e.classList.add('show');clearTimeout(e.t);e.t=setTimeout(()=>e.classList.remove('show'),1800)}
@@ -155,6 +165,33 @@ function calcularFaltaCompra(p,e){
   return {falta:0,alvo:0,tipo:'nenhum'};
 }
 function disponivel(p,e){return p.cigarro?e.cigarros:(p.unidadeOnly||!e.pacote?e.qtd:e.qtd*e.pacote+e.resto)}
+function calcularMargens(p,e){
+  const custo=Number(e.custoUltimaCompra)||0;
+  function m(preco,custoBase,label){
+    if(!preco||!custoBase)return null;
+    const lucro=preco-custoBase;
+    return {label,preco,custo:custoBase,lucro,pct:lucro/custoBase*100};
+  }
+  if(!custo)return{custo:0,linhas:[]};
+  if(p.cigarro){
+    const custoMaco=custo/10,custoUnid=custo/200;
+    return{custo,linhas:[m(e.precoFardo,custo,'📦 Pacote (10 maços)'),m(e.precoMaco,custoMaco,'🚬 Maço (20 un.)'),m(e.precoUnidade,custoUnid,'Varejo (1 un.)')].filter(Boolean)};
+  }
+  if(p.unidadeOnly||!e.pacote){
+    return{custo,linhas:[m(e.precoUnidade,custo,'Unidade')].filter(Boolean)};
+  }
+  const pacote=e.pacote,custoUnid=custo/pacote;
+  const linhas=[];
+  if(p.quenteGelado){
+    linhas.push(m(e.precoQuente,custo,'🔥 '+rotuloFardo(p)+' quente'));
+    linhas.push(m(e.precoGelado,custo,'🧊 '+rotuloFardo(p)+' gelado'));
+  }else{
+    linhas.push(m(e.precoFardo,custo,rotuloFardo(p)+' fechado'));
+  }
+  linhas.push(m(e.precoUnidade,custoUnid,'Unidade avulsa'));
+  if(e.precoUnidade)linhas.push(m(e.precoUnidade*pacote,custo,'Se vender as '+pacote+' un. soltas'));
+  return{custo,linhas:linhas.filter(Boolean)};
+}
 function render(){const main=document.getElementById('main'),chips=document.getElementById('chips');main.innerHTML='';chips.innerHTML='';const favoritosProdutos=FAVORITOS.map(id=>PRODUTOS.find(x=>x.id===id)).filter(Boolean);if(favoritosProdutos.length){const sec=document.createElement('section');sec.className='categoria';sec.id='cat-favoritos';sec.innerHTML='<div class="titulo">⭐ Favoritos (acesso rápido)</div>';favoritosProdutos.forEach(p=>sec.appendChild(card(p)));main.appendChild(sec);const ch=document.createElement('button');ch.className='chip';ch.textContent='⭐ Favoritos';ch.onclick=()=>document.getElementById('cat-favoritos').scrollIntoView({behavior:'smooth'});chips.appendChild(ch)}if(COMBOS.length){const sec=document.createElement('section');sec.className='categoria';sec.id='cat-combos';sec.innerHTML='<div class="titulo">🎁 Kits/Combos</div>';COMBOS.forEach(combo=>sec.appendChild(cardCombo(combo)));main.appendChild(sec);const ch=document.createElement('button');ch.className='chip';ch.textContent='🎁 Combos';ch.onclick=()=>document.getElementById('cat-combos').scrollIntoView({behavior:'smooth'});chips.appendChild(ch)}CATEGORIAS.forEach(c=>{const ch=document.createElement('button');ch.className='chip';ch.textContent=c.emoji+' '+tituloCategoria(c);ch.onclick=()=>document.getElementById('cat-'+c.id).scrollIntoView({behavior:'smooth'});chips.appendChild(ch);const sec=document.createElement('section');sec.className='categoria';sec.id='cat-'+c.id;sec.innerHTML='<div class="titulo">'+c.emoji+' '+tituloCategoria(c)+'</div>';PRODUTOS.filter(p=>p.catId===c.id).forEach(p=>sec.appendChild(card(p)));main.appendChild(sec)});resumo();atualizarCarrinho();aplicarFiltro()}
 function precoInput(label,key,e){const l=document.createElement('label');l.textContent=label;const i=document.createElement('input');i.type='number';i.step='0.01';i.placeholder='0,00';i.value=e[key]??'';i.oninput=()=>{e[key]=i.value===''?null:Number(i.value);autoSalvar()};l.appendChild(i);return l}
 function abrirRecorte(file,onSave){
@@ -286,7 +323,12 @@ function card(p){
 
   const pr=document.createElement('div');pr.className='precos';
   if(p.cigarro){pr.append(precoInput('Pacote R$','precoFardo',e),precoInput('Maço R$','precoMaco',e),precoInput('Varejo R$','precoUnidade',e))}
-  else{pr.append(precoInput(p.unidadeOnly?'Preço R$':'Unit. R$','precoUnidade',e));if(!p.unidadeOnly&&e.pacote)pr.append(precoInput('Fardo R$','precoFardo',e));if(p.quenteGelado)pr.append(precoInput('🔥 Quente R$','precoQuente',e),precoInput('🧊 Gelado R$','precoGelado',e))}
+  else{pr.append(precoInput(p.unidadeOnly?'Preço R$':'Unit. R$','precoUnidade',e));if(p.quenteGelado){pr.append(precoInput('🔥 Quente R$','precoQuente',e),precoInput('🧊 Gelado R$','precoGelado',e))}else if(!p.unidadeOnly&&e.pacote){pr.append(precoInput('Fardo R$','precoFardo',e))}}
+
+  const custoRow=document.createElement('div');custoRow.className='minrow';custoRow.innerHTML='💰 Preço pago na última compra R$ ';
+  const custoInput=document.createElement('input');custoInput.className='minimo';custoInput.style.width='64px';custoInput.type='number';custoInput.step='0.01';custoInput.placeholder='0,00';custoInput.value=e.custoUltimaCompra??'';
+  custoInput.oninput=()=>{e.custoUltimaCompra=custoInput.value===''?null:Number(custoInput.value);autoSalvar()};
+  custoRow.appendChild(custoInput);
 
   const mr=document.createElement('div');mr.className='minrow';mr.innerHTML='Avisar quando chegar em ';
   const mi=document.createElement('input');mi.className='minimo';mi.type='number';mi.value=e.minimo||'';
@@ -310,7 +352,7 @@ function card(p){
   btnPausarFull.textContent=e.pausado?'▶️ Ativar produto':'⏸️ Pausar produto (não tenho pra vender agora)';
   btnPausarFull.onclick=()=>{e.pausado=!e.pausado;salvar();render();toast(e.pausado?'Produto pausado':'Produto ativado')};
 
-  det.append(obsEl,pr,mr,refRow,sugTxt,btnCorrigirFull,btnPausarFull);
+  det.append(obsEl,pr,custoRow,mr,refRow,sugTxt,btnCorrigirFull,btnPausarFull);
   d.append(topo,acoes,det);
   return d;
 }
@@ -1654,6 +1696,7 @@ function abrirMenu(){
     ['📅','Fechar o dia / ver vendas',()=>abrirVendas()],
     ['📊','Resumo por período (semana/mês)',abrirResumoPeriodo],
     ['📋','Cotação de fornecedores',abrirCotacao],
+    ['📈','Margem de lucro',abrirMargemLucro],
     ['💵','Caixa'+(CAIXA.aberto?' (aberto)':' (fechado)'),abrirTelaCaixa],
     ['💰','Fiado (a receber)'+(pendFiado>0?' · '+pendFiado+' pendente'+(pendFiado>1?'s':''):''),abrirFiados],
     ['📝','Orçamentos'+(ORCAMENTOS.length?' · '+ORCAMENTOS.length:''),abrirOrcamentos],
@@ -1751,6 +1794,120 @@ function abrirEstoqueBaixo(){
     };
     body.appendChild(btnCompartilhar);
   }
+  document.body.appendChild(bg);
+}
+
+function abrirMargemLucro(){
+  fecharModal();
+  const bg=document.createElement('div');bg.className='cotacao-bg';
+  const header=document.createElement('div');header.className='cotacao-header';
+  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">📈 Margem de lucro</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Preenche o preço pago e veja quanto tá ganhando em cada forma de venda.</p>';
+  const btnFechar=document.createElement('button');btnFechar.textContent='✕ Fechar';btnFechar.style.cssText='border:0;background:#f4f4f6;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;flex:none;min-height:40px';
+  btnFechar.onclick=()=>bg.remove();
+  header.append(tit,btnFechar);
+  bg.appendChild(header);
+  const filtros=document.createElement('div');filtros.className='cotacao-filtros';
+  const inpBusca=document.createElement('input');inpBusca.placeholder='Buscar produto...';
+  const cAlvo=document.createElement('div');cAlvo.style.cssText='display:flex;align-items:center;gap:6px;min-width:170px;background:#fafafa;border:1px solid #e4e4e7;border-radius:12px;padding:0 10px';
+  cAlvo.innerHTML='<span style="font-size:11px;color:#9a9aa0;white-space:nowrap">🎯 Meta padrão</span>';
+  const inpAlvo=document.createElement('input');inpAlvo.type='number';inpAlvo.value=MARGEM_ALVO;inpAlvo.style.cssText='border:0;background:transparent;padding:10px 4px;font-size:13px;width:50px';
+  const spanPct=document.createElement('span');spanPct.style.cssText='font-size:12px;color:#9a9aa0';spanPct.textContent='%';
+  cAlvo.append(inpAlvo,spanPct);
+  filtros.append(inpBusca,cAlvo);
+  bg.appendChild(filtros);
+  const dica=document.createElement('p');dica.style.cssText='font-size:10.5px;color:#9a9aa0;padding:6px 14px 0;margin:0';dica.textContent='A meta padrão vale pra todo produto que não tiver uma meta própria — dá pra ajustar a meta de cada produto individualmente dentro do card dele (ex.: cerveja com uma meta menor que os outros itens).';
+  bg.appendChild(dica);
+  const acoes=document.createElement('div');acoes.className='cotacao-acoes';
+  let ordemPiorPrimeiro=true;
+  const btnOrdem=document.createElement('button');btnOrdem.style.cssText='border:0;background:#f4f4f6;color:#555;border-radius:10px;padding:9px 14px;font-weight:800;font-size:12px;cursor:pointer;min-height:38px';
+  function atualizarBtnOrdem(){btnOrdem.textContent=ordemPiorPrimeiro?'⚠️ Ordenando: pior margem primeiro':'🔤 Ordenando: A-Z'}
+  atualizarBtnOrdem();
+  btnOrdem.onclick=()=>{ordemPiorPrimeiro=!ordemPiorPrimeiro;atualizarBtnOrdem();renderLista()};
+  acoes.appendChild(btnOrdem);
+  bg.appendChild(acoes);
+  const body=document.createElement('div');body.className='cotacao-body';
+  bg.appendChild(body);
+  const resumo=document.createElement('div');resumo.className='cotacao-resumo';
+  inpAlvo.oninput=()=>{MARGEM_ALVO=Number(inpAlvo.value)||0;salvarMargemAlvo();renderLista()};
+  function corPct(pct,meta){if(pct==null)return '#9a9aa0';if(pct<meta*0.5)return 'var(--vermelho)';if(pct<meta)return '#c9740f';return 'var(--verde)'}
+  function recalcularResumo(itensComCusto){
+    if(!itensComCusto.length){resumo.innerHTML='<small style="opacity:.75;font-size:10px;font-weight:700;text-transform:uppercase">Preenche o preço pago em pelo menos um produto pra ver o resumo</small>';return}
+    let somaPct=0,n=0,abaixo=0;
+    itensComCusto.forEach(({e,margens})=>{const meta=metaProduto(e);margens.linhas.forEach(l=>{somaPct+=l.pct;n++;if(l.pct<meta)abaixo++})});
+    const media=n?somaPct/n:0;
+    resumo.innerHTML='<small style="opacity:.75;text-transform:uppercase;font-size:10px;font-weight:700;letter-spacing:.4px">Margem média (com custo cadastrado)</small><br><b style="font-size:23px">'+media.toFixed(1)+'%</b>'+(abaixo>0?'<br><small style="opacity:.65;font-size:10px">'+abaixo+' preço(s) abaixo da meta de cada produto</small>':'');
+  }
+  function renderLista(){
+    body.innerHTML='';
+    const busca=inpBusca.value.trim().toLowerCase();
+    const produtosFiltrados=PRODUTOS.filter(p=>!busca||p.nome.toLowerCase().includes(busca));
+    const comCusto=[],semCusto=[];
+    produtosFiltrados.forEach(p=>{const e=estado(p),margens=calcularMargens(p,e);if(margens.custo>0&&margens.linhas.length)comCusto.push({p,e,margens});else semCusto.push({p,e})});
+    if(ordemPiorPrimeiro){
+      comCusto.sort((a,b)=>{
+        const piorA=Math.min(...a.margens.linhas.map(l=>l.pct)),piorB=Math.min(...b.margens.linhas.map(l=>l.pct));
+        return piorA-piorB;
+      });
+    }else{
+      comCusto.sort((a,b)=>a.p.nome.localeCompare(b.p.nome,'pt-BR'));
+    }
+    semCusto.sort((a,b)=>a.p.nome.localeCompare(b.p.nome,'pt-BR'));
+    comCusto.forEach(({p,e,margens})=>{
+      const meta=metaProduto(e);
+      const card=document.createElement('div');card.className='cotacao-card';
+      const topo=document.createElement('div');topo.style.cssText='display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px';
+      topo.innerHTML='<div style="font-weight:800;font-size:13.5px">'+p.nome+'</div>';
+      card.appendChild(topo);
+      const linhaConfig=document.createElement('div');linhaConfig.style.cssText='display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px';
+      const campoCusto=document.createElement('div');campoCusto.style.cssText='display:flex;align-items:center;gap:6px';
+      campoCusto.innerHTML='<span style="font-size:11px;color:#9a9aa0">💰 Custo</span>';
+      const inpCusto=document.createElement('input');inpCusto.type='number';inpCusto.step='0.01';inpCusto.value=e.custoUltimaCompra??'';inpCusto.style.cssText='width:64px;border:1px solid #e4e4e7;border-radius:8px;padding:5px 6px;font-size:12px;background:#fafafa';
+      inpCusto.oninput=()=>{e.custoUltimaCompra=inpCusto.value?Number(inpCusto.value):null;autoSalvar();renderLista()};
+      campoCusto.appendChild(inpCusto);
+      const campoMeta=document.createElement('div');campoMeta.style.cssText='display:flex;align-items:center;gap:6px';
+      campoMeta.innerHTML='<span style="font-size:11px;color:#9a9aa0">🎯 Meta desse produto</span>';
+      const inpMeta=document.createElement('input');inpMeta.type='number';inpMeta.placeholder=String(MARGEM_ALVO);inpMeta.value=e.margemAlvo??'';inpMeta.style.cssText='width:50px;border:1px solid #e4e4e7;border-radius:8px;padding:5px 6px;font-size:12px;background:#fafafa';
+      inpMeta.oninput=()=>{e.margemAlvo=inpMeta.value===''?null:Number(inpMeta.value);autoSalvar();renderLista()};
+      campoMeta.appendChild(inpMeta);
+      const spanPct2=document.createElement('span');spanPct2.style.cssText='font-size:11px;color:#9a9aa0';spanPct2.textContent='%';
+      campoMeta.appendChild(spanPct2);
+      linhaConfig.append(campoCusto,campoMeta);
+      card.appendChild(linhaConfig);
+      margens.linhas.forEach(l=>{
+        const linha=document.createElement('div');linha.className='margem-linha';
+        const topoL=document.createElement('div');topoL.className='margem-topo';
+        topoL.innerHTML='<span>'+l.label+'</span><span style="color:'+corPct(l.pct,meta)+'">'+dinheiro(l.lucro)+' <small>('+l.pct.toFixed(1)+'%)</small></span>';
+        linha.appendChild(topoL);
+        const sub=document.createElement('div');sub.className='margem-sub';sub.textContent='Vende '+dinheiro(l.preco)+' · custou '+dinheiro(l.custo);
+        linha.appendChild(sub);
+        const barWrap=document.createElement('div');barWrap.className='margem-bar-wrap';
+        const bar=document.createElement('div');bar.className='margem-bar';bar.style.width=Math.max(Math.min((l.pct/(meta*1.5||1))*100,100),3)+'%';bar.style.background=corPct(l.pct,meta);
+        barWrap.appendChild(bar);linha.appendChild(barWrap);
+        if(l.pct<meta){
+          const sug=document.createElement('div');sug.className='margem-sugestao';sug.style.color=corPct(l.pct,meta);
+          sug.textContent='💡 Pra bater '+meta+'%, sugestão: '+dinheiro(l.custo*(1+meta/100));
+          linha.appendChild(sug);
+        }
+        card.appendChild(linha);
+      });
+      body.appendChild(card);
+    });
+    if(semCusto.length){
+      const tit2=document.createElement('div');tit2.style.cssText='font-size:12px;font-weight:800;text-transform:uppercase;color:#7a7264;margin:16px 0 8px;border-bottom:2px solid var(--amarelo);padding-bottom:4px';tit2.textContent='Sem custo cadastrado ('+semCusto.length+')';
+      body.appendChild(tit2);
+      semCusto.forEach(({p,e})=>{
+        const card=document.createElement('div');card.className='cotacao-card';card.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px';
+        const nome=document.createElement('div');nome.style.cssText='font-weight:700;font-size:12.5px;flex:1;min-width:0';nome.textContent=p.nome;
+        const inpCusto=document.createElement('input');inpCusto.type='number';inpCusto.step='0.01';inpCusto.placeholder='Custo R$';inpCusto.style.cssText='width:80px;border:1px solid #e4e4e7;border-radius:8px;padding:7px 8px;font-size:12px;background:#fafafa';
+        inpCusto.oninput=()=>{e.custoUltimaCompra=inpCusto.value?Number(inpCusto.value):null;autoSalvar();renderLista()};
+        card.append(nome,inpCusto);
+        body.appendChild(card);
+      });
+    }
+    body.appendChild(resumo);recalcularResumo(comCusto);
+  }
+  inpBusca.oninput=renderLista;
+  renderLista();
   document.body.appendChild(bg);
 }
 
