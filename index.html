@@ -1817,6 +1817,9 @@ function abrirMargemLucro(){
   bg.appendChild(filtros);
   const dica=document.createElement('p');dica.style.cssText='font-size:10.5px;color:#9a9aa0;padding:6px 14px 0;margin:0';dica.textContent='A meta padrão vale pra todo produto que não tiver uma meta própria — dá pra ajustar a meta de cada produto individualmente dentro do card dele (ex.: cerveja com uma meta menor que os outros itens).';
   bg.appendChild(dica);
+  const legenda=document.createElement('div');legenda.style.cssText='display:flex;flex-wrap:wrap;gap:12px;padding:10px 14px 0;font-size:10.5px;color:#7a7264';
+  legenda.innerHTML='<span><span style="display:inline-block;width:9px;height:9px;border-radius:99px;background:var(--vermelho);margin-right:4px"></span>Bem abaixo da meta</span><span><span style="display:inline-block;width:9px;height:9px;border-radius:99px;background:#c9740f;margin-right:4px"></span>Abaixo da meta</span><span><span style="display:inline-block;width:9px;height:9px;border-radius:99px;background:var(--verde);margin-right:4px"></span>Na meta ou acima</span>';
+  bg.appendChild(legenda);
   const acoes=document.createElement('div');acoes.className='cotacao-acoes';
   let ordemPiorPrimeiro=true;
   const btnOrdem=document.createElement('button');btnOrdem.style.cssText='border:0;background:#f4f4f6;color:#555;border-radius:10px;padding:9px 14px;font-weight:800;font-size:12px;cursor:pointer;min-height:38px';
@@ -1828,70 +1831,87 @@ function abrirMargemLucro(){
   const body=document.createElement('div');body.className='cotacao-body';
   bg.appendChild(body);
   const resumo=document.createElement('div');resumo.className='cotacao-resumo';
+  let comCustoAtual=[];
   inpAlvo.oninput=()=>{MARGEM_ALVO=Number(inpAlvo.value)||0;salvarMargemAlvo();renderLista()};
   function corPct(pct,meta){if(pct==null)return '#9a9aa0';if(pct<meta*0.5)return 'var(--vermelho)';if(pct<meta)return '#c9740f';return 'var(--verde)'}
-  function recalcularResumo(itensComCusto){
-    if(!itensComCusto.length){resumo.innerHTML='<small style="opacity:.75;font-size:10px;font-weight:700;text-transform:uppercase">Preenche o preço pago em pelo menos um produto pra ver o resumo</small>';return}
+  function recalcularResumo(){
+    if(!comCustoAtual.length){resumo.innerHTML='<small style="opacity:.75;font-size:10px;font-weight:700;text-transform:uppercase">Preenche o preço pago em pelo menos um produto pra ver o resumo</small>';return}
     let somaPct=0,n=0,abaixo=0;
-    itensComCusto.forEach(({e,margens})=>{const meta=metaProduto(e);margens.linhas.forEach(l=>{somaPct+=l.pct;n++;if(l.pct<meta)abaixo++})});
+    comCustoAtual.forEach(({p,e})=>{const margens=calcularMargens(p,e),meta=metaProduto(e);margens.linhas.forEach(l=>{somaPct+=l.pct;n++;if(l.pct<meta)abaixo++})});
     const media=n?somaPct/n:0;
     resumo.innerHTML='<small style="opacity:.75;text-transform:uppercase;font-size:10px;font-weight:700;letter-spacing:.4px">Margem média (com custo cadastrado)</small><br><b style="font-size:23px">'+media.toFixed(1)+'%</b>'+(abaixo>0?'<br><small style="opacity:.65;font-size:10px">'+abaixo+' preço(s) abaixo da meta de cada produto</small>':'');
+  }
+  function montarCard(p,e){
+    const meta=metaProduto(e);
+    const card=document.createElement('div');card.className='cotacao-card';
+    const topo=document.createElement('div');topo.style.cssText='display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px';
+    topo.innerHTML='<div style="font-weight:800;font-size:13.5px">'+p.nome+'</div>';
+    card.appendChild(topo);
+    const linhaConfig=document.createElement('div');linhaConfig.style.cssText='display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px';
+    const campoCusto=document.createElement('div');campoCusto.style.cssText='display:flex;align-items:center;gap:6px';
+    campoCusto.innerHTML='<span style="font-size:11px;color:#9a9aa0">💰 Custo</span>';
+    const inpCusto=document.createElement('input');inpCusto.type='number';inpCusto.step='0.01';inpCusto.value=e.custoUltimaCompra??'';inpCusto.style.cssText='width:64px;border:1px solid #e4e4e7;border-radius:8px;padding:5px 6px;font-size:12px;background:#fafafa';
+    campoCusto.appendChild(inpCusto);
+    const campoMeta=document.createElement('div');campoMeta.style.cssText='display:flex;align-items:center;gap:6px';
+    campoMeta.innerHTML='<span style="font-size:11px;color:#9a9aa0">🎯 Meta desse produto</span>';
+    const inpMeta=document.createElement('input');inpMeta.type='number';inpMeta.placeholder=String(MARGEM_ALVO);inpMeta.value=e.margemAlvo??'';inpMeta.style.cssText='width:50px;border:1px solid #e4e4e7;border-radius:8px;padding:5px 6px;font-size:12px;background:#fafafa';
+    campoMeta.appendChild(inpMeta);
+    const spanPct2=document.createElement('span');spanPct2.style.cssText='font-size:11px;color:#9a9aa0';spanPct2.textContent='%';
+    campoMeta.appendChild(spanPct2);
+    linhaConfig.append(campoCusto,campoMeta);
+    card.appendChild(linhaConfig);
+    const linhasWrap=document.createElement('div');
+    card.appendChild(linhasWrap);
+    function redesenharLinhas(){
+      linhasWrap.innerHTML='';
+      const margens=calcularMargens(p,e),metaAtual=metaProduto(e);
+      if(!margens.custo||!margens.linhas.length){
+        const aviso=document.createElement('div');aviso.style.cssText='font-size:11.5px;color:#9a9aa0;padding:4px 0';aviso.textContent='Preenche o custo pra ver as margens.';
+        linhasWrap.appendChild(aviso);return;
+      }
+      margens.linhas.forEach(l=>{
+        const linha=document.createElement('div');linha.className='margem-linha';
+        const topoL=document.createElement('div');topoL.className='margem-topo';
+        topoL.innerHTML='<span>'+l.label+'</span><span style="color:'+corPct(l.pct,metaAtual)+'">'+dinheiro(l.lucro)+' <small>('+l.pct.toFixed(1)+'%)</small></span>';
+        linha.appendChild(topoL);
+        const sub=document.createElement('div');sub.className='margem-sub';sub.textContent='Vende '+dinheiro(l.preco)+' · custou '+dinheiro(l.custo);
+        linha.appendChild(sub);
+        const barWrap=document.createElement('div');barWrap.className='margem-bar-wrap';
+        const bar=document.createElement('div');bar.className='margem-bar';bar.style.width=Math.max(Math.min((l.pct/(metaAtual*1.5||1))*100,100),3)+'%';bar.style.background=corPct(l.pct,metaAtual);
+        barWrap.appendChild(bar);linha.appendChild(barWrap);
+        if(l.pct<metaAtual){
+          const sug=document.createElement('div');sug.className='margem-sugestao';sug.style.color=corPct(l.pct,metaAtual);
+          sug.textContent='💡 Pra bater '+metaAtual+'%, sugestão: '+dinheiro(l.custo*(1+metaAtual/100));
+          linha.appendChild(sug);
+        }
+        linhasWrap.appendChild(linha);
+      });
+    }
+    redesenharLinhas();
+    inpCusto.oninput=()=>{e.custoUltimaCompra=inpCusto.value?Number(inpCusto.value):null;autoSalvar();redesenharLinhas();recalcularResumo()};
+    inpCusto.onblur=renderLista;
+    inpMeta.oninput=()=>{e.margemAlvo=inpMeta.value===''?null:Number(inpMeta.value);autoSalvar();redesenharLinhas();recalcularResumo()};
+    inpMeta.onblur=renderLista;
+    return card;
   }
   function renderLista(){
     body.innerHTML='';
     const busca=inpBusca.value.trim().toLowerCase();
     const produtosFiltrados=PRODUTOS.filter(p=>!busca||p.nome.toLowerCase().includes(busca));
     const comCusto=[],semCusto=[];
-    produtosFiltrados.forEach(p=>{const e=estado(p),margens=calcularMargens(p,e);if(margens.custo>0&&margens.linhas.length)comCusto.push({p,e,margens});else semCusto.push({p,e})});
+    produtosFiltrados.forEach(p=>{const e=estado(p),margens=calcularMargens(p,e);if(margens.custo>0&&margens.linhas.length)comCusto.push({p,e});else semCusto.push({p,e})});
     if(ordemPiorPrimeiro){
       comCusto.sort((a,b)=>{
-        const piorA=Math.min(...a.margens.linhas.map(l=>l.pct)),piorB=Math.min(...b.margens.linhas.map(l=>l.pct));
+        const ma=calcularMargens(a.p,a.e),mb=calcularMargens(b.p,b.e);
+        const piorA=Math.min(...ma.linhas.map(l=>l.pct)),piorB=Math.min(...mb.linhas.map(l=>l.pct));
         return piorA-piorB;
       });
     }else{
       comCusto.sort((a,b)=>a.p.nome.localeCompare(b.p.nome,'pt-BR'));
     }
     semCusto.sort((a,b)=>a.p.nome.localeCompare(b.p.nome,'pt-BR'));
-    comCusto.forEach(({p,e,margens})=>{
-      const meta=metaProduto(e);
-      const card=document.createElement('div');card.className='cotacao-card';
-      const topo=document.createElement('div');topo.style.cssText='display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px';
-      topo.innerHTML='<div style="font-weight:800;font-size:13.5px">'+p.nome+'</div>';
-      card.appendChild(topo);
-      const linhaConfig=document.createElement('div');linhaConfig.style.cssText='display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px';
-      const campoCusto=document.createElement('div');campoCusto.style.cssText='display:flex;align-items:center;gap:6px';
-      campoCusto.innerHTML='<span style="font-size:11px;color:#9a9aa0">💰 Custo</span>';
-      const inpCusto=document.createElement('input');inpCusto.type='number';inpCusto.step='0.01';inpCusto.value=e.custoUltimaCompra??'';inpCusto.style.cssText='width:64px;border:1px solid #e4e4e7;border-radius:8px;padding:5px 6px;font-size:12px;background:#fafafa';
-      inpCusto.oninput=()=>{e.custoUltimaCompra=inpCusto.value?Number(inpCusto.value):null;autoSalvar();renderLista()};
-      campoCusto.appendChild(inpCusto);
-      const campoMeta=document.createElement('div');campoMeta.style.cssText='display:flex;align-items:center;gap:6px';
-      campoMeta.innerHTML='<span style="font-size:11px;color:#9a9aa0">🎯 Meta desse produto</span>';
-      const inpMeta=document.createElement('input');inpMeta.type='number';inpMeta.placeholder=String(MARGEM_ALVO);inpMeta.value=e.margemAlvo??'';inpMeta.style.cssText='width:50px;border:1px solid #e4e4e7;border-radius:8px;padding:5px 6px;font-size:12px;background:#fafafa';
-      inpMeta.oninput=()=>{e.margemAlvo=inpMeta.value===''?null:Number(inpMeta.value);autoSalvar();renderLista()};
-      campoMeta.appendChild(inpMeta);
-      const spanPct2=document.createElement('span');spanPct2.style.cssText='font-size:11px;color:#9a9aa0';spanPct2.textContent='%';
-      campoMeta.appendChild(spanPct2);
-      linhaConfig.append(campoCusto,campoMeta);
-      card.appendChild(linhaConfig);
-      margens.linhas.forEach(l=>{
-        const linha=document.createElement('div');linha.className='margem-linha';
-        const topoL=document.createElement('div');topoL.className='margem-topo';
-        topoL.innerHTML='<span>'+l.label+'</span><span style="color:'+corPct(l.pct,meta)+'">'+dinheiro(l.lucro)+' <small>('+l.pct.toFixed(1)+'%)</small></span>';
-        linha.appendChild(topoL);
-        const sub=document.createElement('div');sub.className='margem-sub';sub.textContent='Vende '+dinheiro(l.preco)+' · custou '+dinheiro(l.custo);
-        linha.appendChild(sub);
-        const barWrap=document.createElement('div');barWrap.className='margem-bar-wrap';
-        const bar=document.createElement('div');bar.className='margem-bar';bar.style.width=Math.max(Math.min((l.pct/(meta*1.5||1))*100,100),3)+'%';bar.style.background=corPct(l.pct,meta);
-        barWrap.appendChild(bar);linha.appendChild(barWrap);
-        if(l.pct<meta){
-          const sug=document.createElement('div');sug.className='margem-sugestao';sug.style.color=corPct(l.pct,meta);
-          sug.textContent='💡 Pra bater '+meta+'%, sugestão: '+dinheiro(l.custo*(1+meta/100));
-          linha.appendChild(sug);
-        }
-        card.appendChild(linha);
-      });
-      body.appendChild(card);
-    });
+    comCustoAtual=comCusto;
+    comCusto.forEach(({p,e})=>body.appendChild(montarCard(p,e)));
     if(semCusto.length){
       const tit2=document.createElement('div');tit2.style.cssText='font-size:12px;font-weight:800;text-transform:uppercase;color:#7a7264;margin:16px 0 8px;border-bottom:2px solid var(--amarelo);padding-bottom:4px';tit2.textContent='Sem custo cadastrado ('+semCusto.length+')';
       body.appendChild(tit2);
@@ -1899,12 +1919,13 @@ function abrirMargemLucro(){
         const card=document.createElement('div');card.className='cotacao-card';card.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px';
         const nome=document.createElement('div');nome.style.cssText='font-weight:700;font-size:12.5px;flex:1;min-width:0';nome.textContent=p.nome;
         const inpCusto=document.createElement('input');inpCusto.type='number';inpCusto.step='0.01';inpCusto.placeholder='Custo R$';inpCusto.style.cssText='width:80px;border:1px solid #e4e4e7;border-radius:8px;padding:7px 8px;font-size:12px;background:#fafafa';
-        inpCusto.oninput=()=>{e.custoUltimaCompra=inpCusto.value?Number(inpCusto.value):null;autoSalvar();renderLista()};
+        inpCusto.oninput=()=>{e.custoUltimaCompra=inpCusto.value?Number(inpCusto.value):null;autoSalvar()};
+        inpCusto.onblur=renderLista;
         card.append(nome,inpCusto);
         body.appendChild(card);
       });
     }
-    body.appendChild(resumo);recalcularResumo(comCusto);
+    body.appendChild(resumo);recalcularResumo();
   }
   inpBusca.oninput=renderLista;
   renderLista();
@@ -1998,6 +2019,39 @@ window.addEventListener('scroll',()=>{
 },{passive:true});
 
 function resumo(){atualizarBadgeMenu()}
+function metaSugeridaPorProduto(p){
+  if(p.cigarro)return null;
+  const nome=p.nome.toLowerCase();
+  if(p.catId==='gelo')return 30;
+  if(p.catId==='vinhos')return 25;
+  if(p.catId==='destilados'){
+    const premium=['black label','buchanan','jack daniel','blue label','royal salute','gold label','tanqueray','bombay','licor 43','chivas','ballantine','jameson','absolut','grey goose'];
+    return premium.some(k=>nome.includes(k))?20:15;
+  }
+  if(p.catId==='agua')return(nome.includes('galão')||nome.includes('galao')||nome.includes('20l'))?20:15;
+  if(p.catId==='refri2l'||p.catId==='retornavel'||p.catId==='refrilata')return 15;
+  if(p.catId==='energetico')return 20;
+  if(p.catId==='isotonico')return 18;
+  if(p.catId==='chopinho'||p.catId==='chopp')return 25;
+  if(p.catId==='imperio-lata')return 30;
+  if(p.catId==='latao'||p.catId==='longneck'){
+    const premiumCerveja=['heineken','amstel','spaten','stella','budweiser','corona','imperio','império','eisenbahn','colorado','becks'];
+    return premiumCerveja.some(k=>nome.includes(k))?30:25;
+  }
+  return null;
+}
+function aplicarMetasSugeridasV1(){
+  MARGEM_ALVO=14;salvarMargemAlvo();
+  PRODUTOS.forEach(p=>{
+    const e=estado(p),meta=metaSugeridaPorProduto(p);
+    if(meta!=null)e.margemAlvo=meta;
+  });
+  salvar();
+}
+if(!localStorage.getItem('vh-metas-sugeridas-v1')){
+  aplicarMetasSugeridasV1();
+  localStorage.setItem('vh-metas-sugeridas-v1','1');
+}
 if(location.hash==='#catalogo'){renderCatalogoPublico()}else{document.querySelector('.logo').innerHTML='<img src="'+LOGO_CUPOM+'" class="logo-img" alt="VH Bebidas">';render()}
 
 </script>
