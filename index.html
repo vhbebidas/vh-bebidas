@@ -1817,7 +1817,7 @@ function abrirEstoqueBaixo(){
     card.appendChild(custoLinha);
     inpCusto.oninput=()=>{e.custoUltimaCompra=inpCusto.value?Number(inpCusto.value):null;autoSalvar();atualizarCustoLinha();recalcularResumo()};
     const btnRepor=document.createElement('button');btnRepor.textContent='➕ Repor agora';btnRepor.style.cssText='margin-top:9px;width:100%;border:0;background:var(--verdebg);color:var(--verde);border-radius:10px;padding:10px;font-weight:800;font-size:12.5px;cursor:pointer';
-    btnRepor.onclick=()=>abrirReposicao(p);
+    btnRepor.onclick=()=>{bg.remove();abrirReposicao(p)};
     card.appendChild(btnRepor);
     body.appendChild(card);
   });
