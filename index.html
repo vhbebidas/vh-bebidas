@@ -138,6 +138,8 @@ function alternarFavorito(id){const i=FAVORITOS.indexOf(id);if(i>=0)FAVORITOS.sp
 let CAIXA_HIST=load('caixa-historico-vh-v2',[]);
 let COTACAO=load('cotacao-vh-v2',{fornecedores:[],produtos:{}});
 let MARGEM_ALVO=load('margem-alvo-vh-v2',30);
+let ORCAMENTO_COMPRA=load('orcamento-compra-vh-v2','');
+function salvarOrcamentoCompra(){save('orcamento-compra-vh-v2',ORCAMENTO_COMPRA)}
 function salvarMargemAlvo(){save('margem-alvo-vh-v2',MARGEM_ALVO)}
 function salvarCotacao(){save('cotacao-vh-v2',COTACAO)}
 function salvarLoja(){save('loja-vh-v2',LOJA)}
@@ -145,7 +147,7 @@ function salvarClientes(){save('clientes-vh-v2',CLIENTES)}
 function salvarCombos(){save('combos-vh-v2',COMBOS)}
 function salvarCaixaTudo(){save('caixa-vh-v2',CAIXA);save('caixa-historico-vh-v2',CAIXA_HIST)}
 function fotoAtual(p,e){return e.foto||FOTOS_PADRAO[p.id]||null}
-function estado(p){if(!ESTADO[p.id]){const b=PRECOS[p.id]||{},t=PRECOS_TEMP[p.id]||{};ESTADO[p.id]={qtd:0,resto:0,cigarros:0,minimo:0,estoqueRef:0,custoUltimaCompra:null,margemAlvo:null,pacote:p.pacote,foto:null,precoUnidade:b.unidade??null,precoFardo:b.fardo??null,precoQuente:t.quente??null,precoGelado:t.gelado??null,precoMaco:null,pausado:false}}const e=ESTADO[p.id];['resto','cigarros','minimo','estoqueRef'].forEach(k=>e[k]??=0);e.custoUltimaCompra??=null;e.margemAlvo??=null;e.pacote??=p.pacote;e.pausado??=false;return e}
+function estado(p){if(!ESTADO[p.id]){const b=PRECOS[p.id]||{},t=PRECOS_TEMP[p.id]||{};ESTADO[p.id]={qtd:0,resto:0,cigarros:0,minimo:0,estoqueRef:0,custoUltimaCompra:null,margemAlvo:null,loteEconomico:0,pacote:p.pacote,foto:null,precoUnidade:b.unidade??null,precoFardo:b.fardo??null,precoQuente:t.quente??null,precoGelado:t.gelado??null,precoMaco:null,pausado:false}}const e=ESTADO[p.id];['resto','cigarros','minimo','estoqueRef','loteEconomico'].forEach(k=>e[k]??=0);e.custoUltimaCompra??=null;e.margemAlvo??=null;e.pacote??=p.pacote;e.pausado??=false;return e}
 function metaProduto(e){return(e.margemAlvo!=null&&e.margemAlvo!=='')?Number(e.margemAlvo):MARGEM_ALVO}
 function salvar(){save('estoque-vh-v2',ESTADO);save('vendas-vh-v2',VENDAS);save('carrinho-vh-v2',CARRINHO);save('contador-venda-vh-v2',PROX_VENDA);save('orcamentos-vh-v2',ORCAMENTOS);save('contador-orcamento-vh-v2',PROX_ORCAMENTO);save('caixa-vh-v2',CAIXA);save('caixa-historico-vh-v2',CAIXA_HIST)}function autoSalvar(){clearTimeout(saveTimer);saveTimer=setTimeout(salvar,120)}
 const dinheiro=n=>'R$ '+Number(n||0).toFixed(2).replace('.',','),hoje=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -154,22 +156,26 @@ function estoqueTexto(p,e){if(p.cigarro){const pac=Math.floor(e.cigarros/200),r=
 function nivelEstoque(p,e){return p.cigarro?Math.floor(e.cigarros/200):e.qtd}
 function atualizarEstoqueRef(p,e){const n=nivelEstoque(p,e);if(n>(e.estoqueRef||0))e.estoqueRef=n}
 function sugestaoCompra(p,e){
-  if(!e.estoqueRef)return '';
-  const falta=e.estoqueRef-nivelEstoque(p,e);
+  const {falta,alvo,tipo,lote}=calcularFaltaCompra(p,e);
   if(falta<=0)return '';
   const unidade=p.cigarro?('pacote'+(falta!==1?'s':'')):((p.unidadeOnly||!e.pacote)?('unidade'+(falta!==1?'s':'')):('fardo'+(falta!==1?'s':'')));
-  return 'comprar '+falta+' '+unidade+' pra voltar aos '+e.estoqueRef+' de sempre';
+  const loteTxt=lote>0?' (lote de '+lote+')':'';
+  if(tipo==='referencia')return 'comprar '+falta+' '+unidade+loteTxt+' pra voltar aos '+alvo+' de sempre';
+  if(tipo==='minimo')return 'comprar '+falta+' '+unidade+loteTxt+' pra sair do alerta de estoque baixo';
+  return '';
 }
 function unidadeCompra(p,e,falta){return p.cigarro?('pacote'+(falta!==1?'s':'')):((p.unidadeOnly||!e.pacote)?('unidade'+(falta!==1?'s':'')):('fardo'+(falta!==1?'s':'')))}
 function calcularFaltaCompra(p,e){
   const atual=nivelEstoque(p,e);
-  if(e.estoqueRef>0){
-    return {falta:Math.max(e.estoqueRef-atual,0),alvo:e.estoqueRef,tipo:'referencia'};
+  let falta=0,alvo=0,tipo='nenhum';
+  if(e.estoqueRef>0){falta=Math.max(e.estoqueRef-atual,0);alvo=e.estoqueRef;tipo='referencia'}
+  else if(e.minimo>0){falta=Math.max(e.minimo-atual,0);alvo=e.minimo;tipo='minimo'}
+  const lote=e.loteEconomico||0;
+  if(falta>0&&lote>0){
+    falta=Math.max(falta,lote);
+    falta=Math.ceil(falta/lote)*lote;
   }
-  if(e.minimo>0){
-    return {falta:Math.max(e.minimo-atual,0),alvo:e.minimo,tipo:'minimo'};
-  }
-  return {falta:0,alvo:0,tipo:'nenhum'};
+  return {falta,alvo,tipo,lote};
 }
 function disponivel(p,e){return p.cigarro?e.cigarros:(p.unidadeOnly||!e.pacote?e.qtd:e.qtd*e.pacote+e.resto)}
 function calcularMargens(p,e){
@@ -198,6 +204,27 @@ function calcularMargens(p,e){
   linhas.push(m(e.precoUnidade,custoUnid,'Unidade avulsa'));
   if(e.precoUnidade)linhas.push(m(e.precoUnidade*pacote,custo,'Se vender as '+pacote+' un. soltas'));
   return{custo,linhas:linhas.filter(Boolean)};
+}
+function vendidoNoPeriodo(p,e,dias){
+  const inicio=Date.now()-dias*24*60*60*1000;
+  let total=0;
+  VENDAS.forEach(v=>{
+    if(v.ts<inicio)return;
+    v.itens.forEach(i=>{
+      if(i.isCombo||i.produtoId!==p.id)return;
+      if(p.cigarro){
+        if(i.modo==='pacote')total+=i.qtd;
+        else if(i.modo==='maco')total+=i.qtd/10;
+        else total+=i.qtd/200;
+      }else if(p.unidadeOnly||!e.pacote){
+        total+=i.qtd;
+      }else{
+        if(i.modo==='fardo')total+=i.qtd;
+        else total+=i.qtd/(e.pacote||1);
+      }
+    });
+  });
+  return total;
 }
 function render(){const main=document.getElementById('main'),chips=document.getElementById('chips');main.innerHTML='';chips.innerHTML='';const favoritosProdutos=FAVORITOS.map(id=>PRODUTOS.find(x=>x.id===id)).filter(Boolean);if(favoritosProdutos.length){const sec=document.createElement('section');sec.className='categoria';sec.id='cat-favoritos';sec.innerHTML='<div class="titulo">⭐ Favoritos (acesso rápido)</div>';favoritosProdutos.forEach(p=>sec.appendChild(card(p)));main.appendChild(sec);const ch=document.createElement('button');ch.className='chip';ch.textContent='⭐ Favoritos';ch.onclick=()=>document.getElementById('cat-favoritos').scrollIntoView({behavior:'smooth'});chips.appendChild(ch)}if(COMBOS.length){const sec=document.createElement('section');sec.className='categoria';sec.id='cat-combos';sec.innerHTML='<div class="titulo">🎁 Kits/Combos</div>';COMBOS.forEach(combo=>sec.appendChild(cardCombo(combo)));main.appendChild(sec);const ch=document.createElement('button');ch.className='chip';ch.textContent='🎁 Combos';ch.onclick=()=>document.getElementById('cat-combos').scrollIntoView({behavior:'smooth'});chips.appendChild(ch)}CATEGORIAS.forEach(c=>{const ch=document.createElement('button');ch.className='chip';ch.textContent=c.emoji+' '+tituloCategoria(c);ch.onclick=()=>document.getElementById('cat-'+c.id).scrollIntoView({behavior:'smooth'});chips.appendChild(ch);const sec=document.createElement('section');sec.className='categoria';sec.id='cat-'+c.id;sec.innerHTML='<div class="titulo">'+c.emoji+' '+tituloCategoria(c)+'</div>';PRODUTOS.filter(p=>p.catId===c.id).forEach(p=>sec.appendChild(card(p)));main.appendChild(sec)});resumo();atualizarCarrinho();aplicarFiltro()}
 function precoInput(label,key,e){const l=document.createElement('label');l.textContent=label;const i=document.createElement('input');i.type='number';i.step='0.01';i.placeholder='0,00';i.value=e[key]??'';i.oninput=()=>{e[key]=i.value===''?null:Number(i.value);autoSalvar()};l.appendChild(i);return l}
@@ -346,6 +373,12 @@ function card(p){
   const refInput=document.createElement('input');refInput.className='minimo';refInput.type='number';refInput.value=e.estoqueRef||'';
   refInput.oninput=()=>{e.estoqueRef=Number(refInput.value)||0;autoSalvar();atualizarSugestaoTxt()};
   refRow.appendChild(refInput);
+
+  const loteRow=document.createElement('div');loteRow.className='minrow';loteRow.innerHTML='📦 Só vale a pena comprar a partir de (preço melhor em lote) ';
+  const loteInput=document.createElement('input');loteInput.className='minimo';loteInput.type='number';loteInput.value=e.loteEconomico||'';
+  loteInput.oninput=()=>{e.loteEconomico=Number(loteInput.value)||0;autoSalvar();atualizarSugestaoTxt()};
+  loteRow.appendChild(loteInput);
+
   const sugTxt=document.createElement('div');sugTxt.style.cssText='font-size:10.5px;color:var(--vermelho);font-weight:700;margin-top:5px';
   function atualizarSugestaoTxt(){const s=sugestaoCompra(p,e);sugTxt.textContent=s?('📦 '+s.charAt(0).toUpperCase()+s.slice(1)):(e.estoqueRef?'✅ Estoque tá no normal ou acima':'')}
   atualizarSugestaoTxt();
@@ -359,7 +392,7 @@ function card(p){
   btnPausarFull.textContent=e.pausado?'▶️ Ativar produto':'⏸️ Pausar produto (não tenho pra vender agora)';
   btnPausarFull.onclick=()=>{e.pausado=!e.pausado;salvar();render();toast(e.pausado?'Produto pausado':'Produto ativado')};
 
-  det.append(obsEl,pr,custoRow,mr,refRow,sugTxt,btnCorrigirFull,btnPausarFull);
+  det.append(obsEl,pr,custoRow,mr,refRow,loteRow,sugTxt,btnCorrigirFull,btnPausarFull);
   d.append(topo,acoes,det);
   return d;
 }
@@ -1735,6 +1768,7 @@ function abrirMenu(){
     ['📊','Resumo por período (semana/mês)',abrirResumoPeriodo],
     ['📋','Cotação de fornecedores',abrirCotacao],
     ['📈','Margem de lucro',abrirMargemLucro],
+    ['🧮','Planejar compra (orçamento)',abrirPlanejadorCompras],
     ['💵','Caixa'+(CAIXA.aberto?' (aberto)':' (fechado)'),abrirTelaCaixa],
     ['💰','Fiado (a receber)'+(pendFiado>0?' · '+pendFiado+' pendente'+(pendFiado>1?'s':''):''),abrirFiados],
     ['📝','Orçamentos'+(ORCAMENTOS.length?' · '+ORCAMENTOS.length:''),abrirOrcamentos],
@@ -1787,7 +1821,7 @@ function abrirEstoqueBaixo(){
   }
   itens.forEach(p=>{
     const e=estado(p);
-    const {falta,alvo,tipo}=calcularFaltaCompra(p,e);
+    const {falta,alvo,tipo,lote}=calcularFaltaCompra(p,e);
     const card=document.createElement('div');card.className='cotacao-card';
     const topo=document.createElement('div');topo.style.cssText='display:flex;gap:10px;align-items:center;margin-bottom:9px';
     const fotoMostrar=fotoAtual(p,e);
@@ -1799,7 +1833,7 @@ function abrirEstoqueBaixo(){
     card.appendChild(topo);
     if(falta>0){
       const faltaBox=document.createElement('div');faltaBox.style.cssText='background:var(--vermelhobg);color:var(--vermelho);border-radius:10px;padding:8px 10px;font-size:12.5px;font-weight:800;margin-bottom:9px';
-      faltaBox.textContent='📦 Comprar '+falta+' '+unidadeCompra(p,e,falta)+' pra chegar a '+alvo;
+      faltaBox.textContent='📦 Comprar '+falta+' '+unidadeCompra(p,e,falta)+' pra chegar a '+alvo+(lote>0?' (lote mínimo de '+lote+' pra ter preço melhor)':'');
       card.appendChild(faltaBox);
     }
     const campos=document.createElement('div');campos.className='cotacao-campos';
@@ -1967,6 +2001,152 @@ function abrirMargemLucro(){
   }
   inpBusca.oninput=renderLista;
   renderLista();
+  document.body.appendChild(bg);
+}
+
+function abrirPlanejadorCompras(){
+  fecharModal();
+  const bg=document.createElement('div');bg.className='cotacao-bg';
+  const header=document.createElement('div');header.className='cotacao-header';
+  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">🧮 Planejar compra com orçamento</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Diz quanto você tem pra gastar — a gente monta a lista priorizando o que mais vende.</p>';
+  const btnFechar=document.createElement('button');btnFechar.textContent='✕ Fechar';btnFechar.style.cssText='border:0;background:#f4f4f6;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;flex:none;min-height:40px';
+  btnFechar.onclick=()=>bg.remove();
+  header.append(tit,btnFechar);
+  bg.appendChild(header);
+  const filtros=document.createElement('div');filtros.className='cotacao-filtros';
+  const cOrc=document.createElement('div');cOrc.style.cssText='display:flex;align-items:center;gap:6px;flex:1;min-width:150px;background:#fafafa;border:1px solid #e4e4e7;border-radius:12px;padding:0 10px';
+  cOrc.innerHTML='<span style="font-size:11px;color:#9a9aa0;white-space:nowrap">💰 Tenho R$</span>';
+  const inpOrc=document.createElement('input');inpOrc.type='number';inpOrc.step='0.01';inpOrc.placeholder='0,00';inpOrc.value=ORCAMENTO_COMPRA;inpOrc.style.cssText='border:0;background:transparent;padding:10px 4px;font-size:14px;width:100%;font-weight:800';
+  cOrc.appendChild(inpOrc);
+  filtros.appendChild(cOrc);
+  bg.appendChild(filtros);
+  const acoes=document.createElement('div');acoes.className='cotacao-acoes';
+  let dias=30;
+  const btnPeriodo=document.createElement('button');btnPeriodo.style.cssText='border:0;background:#f4f4f6;color:#555;border-radius:10px;padding:9px 14px;font-weight:800;font-size:12px;cursor:pointer;min-height:38px';
+  function atualizarBtnPeriodo(){btnPeriodo.textContent='📅 Baseado nos últimos '+(dias===30?'30 dias (mês)':'7 dias (semana)')}
+  atualizarBtnPeriodo();
+  btnPeriodo.onclick=()=>{dias=dias===30?7:30;atualizarBtnPeriodo();montarLista()};
+  acoes.appendChild(btnPeriodo);
+  bg.appendChild(acoes);
+  const body=document.createElement('div');body.className='cotacao-body';
+  bg.appendChild(body);
+  const resumo=document.createElement('div');resumo.className='cotacao-resumo';
+  const linhasRef=[];
+  function calcularEAtualizar(){
+    const orcamento=Number(inpOrc.value)||0;
+    let restante=orcamento;
+    linhasRef.forEach(r=>{r.item.comprarFalta=0;r.item.comprarExtra=0});
+    linhasRef.forEach(r=>{
+      const it=r.item;
+      if(it.falta<=0||it.custo<=0)return;
+      const passo=it.lote>0?it.lote:1;
+      const custoPasso=passo*it.custo;
+      const passosQueFaltam=Math.ceil(it.falta/passo);
+      const passosQueCabem=Math.floor(restante/custoPasso);
+      const passosComprar=Math.min(passosQueFaltam,passosQueCabem);
+      const qtd=passosComprar*passo;
+      it.comprarFalta=qtd;
+      restante-=qtd*it.custo;
+    });
+    let mudou=true;
+    while(mudou&&restante>0.009){
+      mudou=false;
+      for(const r of linhasRef){
+        const it=r.item;
+        const passo=it.lote>0?it.lote:1;
+        const custoPasso=passo*it.custo;
+        if(it.custo>0&&custoPasso<=restante+0.009){
+          it.comprarExtra+=passo;
+          restante-=custoPasso;
+          mudou=true;
+        }
+      }
+    }
+    let totalGasto=0;
+    linhasRef.forEach(r=>{
+      const it=r.item;
+      const qtdTotal=it.comprarFalta+it.comprarExtra;
+      totalGasto+=qtdTotal*it.custo;
+      r.elQtd.innerHTML=qtdTotal>0?('Comprar: <b>'+qtdTotal+'</b> '+it.unidadeLabel+(it.comprarExtra>0?' <span style="color:var(--verde)">('+it.comprarFalta+' pra repor + '+it.comprarExtra+' extra, porque sobrou)</span>':' <small style="color:#9a9aa0">(pra repor)</small>')):(it.lote>0?'<span style="color:#9a9aa0">Sem orçamento pro lote de '+it.lote+' ainda</span>':'<span style="color:#9a9aa0">Sem orçamento pra esse ainda</span>');
+      r.elSub.textContent=qtdTotal>0?('Subtotal: '+dinheiro(qtdTotal*it.custo)):'';
+      r.card.style.opacity=qtdTotal>0?'1':'.55';
+    });
+    resumo.innerHTML='<small style="opacity:.75;text-transform:uppercase;font-size:10px;font-weight:700;letter-spacing:.4px">Total da compra</small><br><b style="font-size:23px">'+dinheiro(totalGasto)+'</b><br><small style="opacity:.65;font-size:10.5px">Sobra sem usar: '+dinheiro(Math.max(orcamento-totalGasto,0))+'</small>';
+  }
+  function montarLista(){
+    body.innerHTML='';
+    linhasRef.length=0;
+    const itens=[];
+    PRODUTOS.forEach(p=>{
+      const e=estado(p);
+      const {falta,lote}=calcularFaltaCompra(p,e);
+      if(falta<=0)return;
+      const vendido=vendidoNoPeriodo(p,e,dias);
+      const unidadeLabel=p.cigarro?'pacote(s)':((p.unidadeOnly||!e.pacote)?'unidade(s)':'fardo(s)');
+      itens.push({p,e,falta,lote,custo:Number(e.custoUltimaCompra)||0,vendido,unidadeLabel,comprarFalta:0,comprarExtra:0});
+    });
+    itens.sort((a,b)=>b.vendido-a.vendido);
+    const comCusto=itens.filter(it=>it.custo>0);
+    const semCusto=itens.filter(it=>it.custo<=0);
+    if(!itens.length){
+      const vazio=document.createElement('p');vazio.style.cssText='font-size:13px;color:#9a9aa0;text-align:center;padding:30px 10px';vazio.textContent='Nada em falta agora. 🎉';
+      body.appendChild(vazio);return;
+    }
+    comCusto.forEach(it=>{
+      const card=document.createElement('div');card.className='cotacao-card';
+      const topo=document.createElement('div');topo.style.cssText='display:flex;justify-content:space-between;gap:8px;margin-bottom:6px';
+      topo.innerHTML='<div style="font-weight:800;font-size:13.5px">'+it.p.nome+'</div>';
+      card.appendChild(topo);
+      const sub1=document.createElement('div');sub1.style.cssText='font-size:11px;color:#9a9aa0;margin-bottom:8px';
+      sub1.textContent='Vendeu '+it.vendido.toFixed(1)+' '+it.unidadeLabel+' nos últimos '+dias+' dias · falta '+it.falta+' pra chegar na referência'+(it.lote>0?' · só vale a pena comprar de '+it.lote+' em '+it.lote:'');
+      card.appendChild(sub1);
+      const campos=document.createElement('div');campos.className='cotacao-campos';
+      const cCusto=document.createElement('div');cCusto.className='cotacao-campo full';cCusto.innerHTML='<label>Custo por '+it.unidadeLabel.replace('(s)','')+' (R$)</label>';
+      const inpCusto=document.createElement('input');inpCusto.type='number';inpCusto.step='0.01';inpCusto.value=it.custo;
+      cCusto.appendChild(inpCusto);
+      campos.appendChild(cCusto);
+      card.appendChild(campos);
+      const linhaQtd=document.createElement('div');linhaQtd.style.cssText='margin-top:9px;padding-top:9px;border-top:1px solid #f0f0f2;font-size:13px';
+      card.appendChild(linhaQtd);
+      const linhaSub=document.createElement('div');linhaSub.style.cssText='text-align:right;font-weight:800;font-size:12.5px;margin-top:4px';
+      card.appendChild(linhaSub);
+      inpCusto.oninput=()=>{it.custo=Number(inpCusto.value)||0;it.e.custoUltimaCompra=it.custo||null;autoSalvar();calcularEAtualizar()};
+      linhasRef.push({item:it,elQtd:linhaQtd,elSub:linhaSub,card});
+      body.appendChild(card);
+    });
+    if(semCusto.length){
+      const tit2=document.createElement('div');tit2.style.cssText='font-size:12px;font-weight:800;text-transform:uppercase;color:#7a7264;margin:16px 0 8px;border-bottom:2px solid var(--amarelo);padding-bottom:4px';tit2.textContent='Em falta, mas sem custo cadastrado ('+semCusto.length+')';
+      body.appendChild(tit2);
+      semCusto.forEach(it=>{
+        const card=document.createElement('div');card.className='cotacao-card';card.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px';
+        const nome=document.createElement('div');nome.style.cssText='font-weight:700;font-size:12.5px;flex:1;min-width:0';nome.textContent=it.p.nome;
+        const inpCusto=document.createElement('input');inpCusto.type='number';inpCusto.step='0.01';inpCusto.placeholder='Custo R$';inpCusto.style.cssText='width:80px;border:1px solid #e4e4e7;border-radius:8px;padding:7px 8px;font-size:12px;background:#fafafa';
+        inpCusto.oninput=()=>{it.e.custoUltimaCompra=inpCusto.value?Number(inpCusto.value):null;autoSalvar()};
+        inpCusto.onblur=montarLista;
+        card.append(nome,inpCusto);
+        body.appendChild(card);
+      });
+    }
+    body.appendChild(resumo);
+    calcularEAtualizar();
+  }
+  inpOrc.oninput=()=>{ORCAMENTO_COMPRA=inpOrc.value;salvarOrcamentoCompra();calcularEAtualizar()};
+  montarLista();
+  const btnCompartilhar=document.createElement('button');btnCompartilhar.textContent='📤 Enviar lista de compras (WhatsApp)';btnCompartilhar.style.cssText='margin:10px 14px 14px;border:0;background:#111;color:#fff;border-radius:10px;padding:12px;font-weight:800;font-size:13px;cursor:pointer';
+  btnCompartilhar.onclick=()=>{
+    let txt='📋 Lista de compras — '+(LOJA.nome||'VH Bebidas')+' (orçamento: '+dinheiro(Number(inpOrc.value)||0)+')\n\n';
+    let total=0;
+    linhasRef.forEach(r=>{
+      const it=r.item,qtd=it.comprarFalta+it.comprarExtra;
+      if(qtd<=0)return;
+      total+=qtd*it.custo;
+      txt+='• '+it.p.nome+' — '+qtd+' '+it.unidadeLabel+(it.comprarExtra>0?' ('+it.comprarFalta+' repor + '+it.comprarExtra+' extra)':'')+' = '+dinheiro(qtd*it.custo)+'\n';
+    });
+    txt+='\nTotal: '+dinheiro(total);
+    const link=encodeURIComponent(txt);
+    if(navigator.share){navigator.share({text:txt,title:'Lista de compras'}).catch(()=>{})}else{window.open('https://wa.me/?text='+link,'_blank')}
+  };
+  bg.appendChild(btnCompartilhar);
   document.body.appendChild(bg);
 }
 
