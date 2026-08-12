@@ -2161,121 +2161,35 @@ function saldoRotaCliente(clienteId){
 function vendasAbertasRota(clienteId){
   return VENDAS.filter(v=>v.pagamento==='rota'&&v.clienteId===clienteId&&!v.pago).sort((a,b)=>a.ts-b.ts);
 }
-function receberPagamentoRota(cliente){
-  const abertas=vendasAbertasRota(cliente.id);
-  const saldo=abertas.reduce((s,v)=>s+(v.total-(v.valorPago||0)),0);
-  if(saldo<=0)return toast('Esse cliente não tem saldo em aberto');
-  const m=baseModal('💵 Receber pagamento — '+cliente.nome,'Saldo em aberto: '+dinheiro(saldo)+'. Informa quanto ele te pagou agora.');
-  const inp=document.createElement('input');inp.className='campo';inp.type='number';inp.step='0.01';inp.value=saldo.toFixed(2);
-  m.appendChild(inp);
-  const bs=document.createElement('div');bs.className='botoes';
-  bs.innerHTML='<button class="cancelar">Cancelar</button><button class="confirmar">Confirmar</button>';
-  bs.firstChild.onclick=()=>{fecharModal();abrirRotaSemanal()};
-  bs.lastChild.onclick=()=>{
-    let valor=Number(inp.value);
-    if(!valor||valor<=0)return toast('Informa um valor válido');
-    if(valor>saldo+0.009)valor=saldo;
-    let restante=valor;
-    for(const v of abertas){
-      if(restante<=0)break;
-      const faltaV=v.total-(v.valorPago||0);
-      const usa=Math.min(faltaV,restante);
-      v.valorPago=(v.valorPago||0)+usa;
-      if(v.valorPago>=v.total-0.009){v.pago=true;v.valorPago=v.total}
-      restante-=usa;
-    }
-    salvar();toast('Pagamento registrado');fecharModal();abrirRotaSemanal();
-  };
-  m.appendChild(bs);
-}
-function adicionarItemPedidoRota(clienteId,refresh){
-  const m=baseModal('+ Adicionar item ao pedido','Escolhe o produto, quantidade e o preço combinado (pode ser diferente do preço normal).');
-  const sel=document.createElement('select');sel.className='campo';
-  sel.innerHTML=PRODUTOS.map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join('');
-  m.appendChild(sel);
-  const modoWrap=document.createElement('div');modoWrap.className='opcoes';modoWrap.style.marginTop='8px';
-  m.appendChild(modoWrap);
-  const lQtd=document.createElement('div');lQtd.style.cssText='font-size:11px;color:#7a7264;margin:8px 0 3px;font-weight:700';lQtd.textContent='Quantidade';
-  const inpQtd=document.createElement('input');inpQtd.className='campo';inpQtd.type='number';inpQtd.value='1';
-  const lPreco=document.createElement('div');lPreco.style.cssText='font-size:11px;color:#7a7264;margin:8px 0 3px;font-weight:700';lPreco.textContent='Preço combinado (R$)';
-  const inpPreco=document.createElement('input');inpPreco.className='campo';inpPreco.type='number';inpPreco.step='0.01';
-  m.append(lQtd,inpQtd,lPreco,inpPreco);
-  let modoEscolhido='fardo';
-  function preencherPrecoSugerido(){
-    const p=PRODUTOS.find(x=>x.id===sel.value),e=estado(p);
-    let sugestao=0;
-    if(modoEscolhido==='fardo')sugestao=e.precoFardo||e.precoGelado||e.precoQuente||0;
-    else if(modoEscolhido==='pacote')sugestao=e.precoFardo||0;
-    else if(modoEscolhido==='maco')sugestao=e.precoMaco||0;
-    else sugestao=e.precoUnidade||0;
-    inpPreco.value=sugestao||'';
+function processarEntregaRota(cliente,pedido){
+  const necessidade={};
+  pedido.itens.forEach(i=>{necessidade[i.produtoId]=(necessidade[i.produtoId]||0)+i.qtd*i.fator});
+  for(const pid in necessidade){
+    const p=PRODUTOS.find(x=>x.id===pid);if(!p)continue;
+    const e=estado(p);
+    if(disponivel(p,e)<necessidade[pid])return{erro:'Estoque insuficiente: '+p.nome};
   }
-  function montarModos(){
-    modoWrap.innerHTML='';
-    const p=PRODUTOS.find(x=>x.id===sel.value),e=estado(p);
-    const opcoes=[];
-    if(p.cigarro){opcoes.push(['pacote','Pacote'],['maco','Maço'],['unidade','Unidade'])}
-    else if(p.unidadeOnly||!e.pacote){opcoes.push(['unidade','Unidade'])}
-    else{opcoes.push(['fardo','Fardo/Pacote'],['unidade','Unidade avulsa'])}
-    modoEscolhido=opcoes[0][0];
-    opcoes.forEach(([v,l])=>{
-      const b=document.createElement('button');b.type='button';b.className='opcao'+(v===modoEscolhido?' ativa':'');b.textContent=l;
-      b.onclick=()=>{modoEscolhido=v;montarModos()};
-      modoWrap.appendChild(b);
-    });
-    preencherPrecoSugerido();
-  }
-  sel.onchange=montarModos;
-  montarModos();
-  const bs=document.createElement('div');bs.className='botoes';
-  bs.innerHTML='<button class="cancelar">Cancelar</button><button class="confirmar">Adicionar</button>';
-  bs.firstChild.onclick=refresh;
-  bs.lastChild.onclick=()=>{
-    const p=PRODUTOS.find(x=>x.id===sel.value),e=estado(p);
-    const qtd=Number(inpQtd.value)||0,preco=Number(inpPreco.value)||0;
-    if(qtd<=0)return toast('Quantidade inválida');
-    if(preco<=0)return toast('Informa o preço combinado');
-    const fator=modoEscolhido==='fardo'?(e.pacote||1):modoEscolhido==='pacote'?200:modoEscolhido==='maco'?20:1;
-    if(!PEDIDOS_ROTA[clienteId])PEDIDOS_ROTA[clienteId]={itens:[]};
-    PEDIDOS_ROTA[clienteId].itens.push({produtoId:p.id,nome:p.nome,qtd,preco,modo:modoEscolhido,fator});
-    salvarPedidosRota();
-    refresh();
-  };
-  m.appendChild(bs);
-}
-function registrarEntregaRota(cliente){
-  const pedido=PEDIDOS_ROTA[cliente.id];
-  if(!pedido||!pedido.itens||!pedido.itens.length)return toast('Monta o pedido desse cliente antes de registrar a entrega');
-  if(CARRINHO.length&&!confirm('Seu carrinho atual tem itens de outra operação em andamento — isso vai substituir eles. Continuar?'))return;
-  CARRINHO=pedido.itens.map(i=>({id:Date.now()+Math.random(),produtoId:i.produtoId,nome:i.nome,qtd:i.qtd,preco:i.preco,total:i.qtd*i.preco,modo:i.modo,fator:i.fator}));
-  window._clienteAtual=cliente.nome;
-  window._clienteIdAtual=cliente.id;
-  window._pagamentoAtual='rota';
-  window._descontoAtual='';
-  salvar();atualizarCarrinho();fecharModal();abrirCarrinho();
-}
-function abrirHistoricoRota(cli){
-  const entregas=VENDAS.filter(v=>v.pagamento==='rota'&&v.clienteId===cli.id).sort((a,b)=>b.ts-a.ts);
-  const m=baseModal('🧾 Entregas — '+cli.nome,entregas.length?'Histórico de entregas dessa rota.':'Nenhuma entrega registrada ainda.');
-  const btnVoltar=document.createElement('button');btnVoltar.textContent='← Voltar pra rota semanal';btnVoltar.style.cssText='width:100%;padding:9px;border:1px solid #d8cfb8;border-radius:9px;background:#fff;color:#7a7264;font-weight:700;font-size:12px;margin-bottom:10px';
-  btnVoltar.onclick=()=>{fecharModal();abrirRotaSemanal()};
-  m.appendChild(btnVoltar);
-  entregas.forEach(v=>{
-    const d=document.createElement('div');d.className='venda-item';
-    const status=v.pago?'✅ Pago':((v.valorPago||0)>0?'🟡 Parcial ('+dinheiro(v.valorPago)+' de '+dinheiro(v.total)+')':'🔴 Em aberto');
-    d.innerHTML='<div class="cart-top"><span><b>'+new Date(v.ts).toLocaleDateString('pt-BR')+'</b><br><small>Venda Nº'+v.numero+' · '+status+'</small></span><b>'+dinheiro(v.total)+'</b></div>';
-    const btnVer=document.createElement('button');btnVer.textContent='🧾 Ver cupom';btnVer.style.cssText='width:100%;margin-top:6px;border:0;border-radius:7px;padding:7px;background:var(--creme2);color:#7a7264;font-weight:800;font-size:11.5px';
-    btnVer.onclick=()=>abrirCupom(v);
-    d.appendChild(btnVer);
-    m.appendChild(d);
+  pedido.itens.forEach(i=>{
+    const p=PRODUTOS.find(x=>x.id===i.produtoId),e=estado(p),baixa=i.qtd*i.fator;
+    if(p.cigarro)e.cigarros-=baixa;
+    else if(e.pacote){const total=e.qtd*e.pacote+e.resto-baixa;e.qtd=Math.floor(total/e.pacote);e.resto=total%e.pacote}
+    else e.qtd-=baixa;
   });
+  const subtotal=pedido.itens.reduce((s,i)=>s+i.qtd*i.preco,0);
+  const numero=PROX_VENDA;PROX_VENDA++;
+  const venda={id:Date.now()+Math.random(),numero,data:hoje(),ts:Date.now(),itens:pedido.itens.map(i=>({id:Date.now()+Math.random(),produtoId:i.produtoId,nome:i.nome,qtd:i.qtd,preco:i.preco,total:i.qtd*i.preco,modo:i.modo,fator:i.fator})),subtotal,desconto:0,total:subtotal,cliente:cliente.nome,clienteId:cliente.id,pagamento:'rota',pago:false,valorPago:0};
+  VENDAS.push(venda);
+  delete PEDIDOS_ROTA[cliente.id];
+  salvarPedidosRota();
+  salvar();render();
+  return{venda};
 }
 function abrirRotaSemanal(){
   fecharModal();
   const DIAS=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
   const bg=document.createElement('div');bg.className='cotacao-bg';
   const header=document.createElement('div');header.className='cotacao-header';
-  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">🚚 Rota semanal</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Pedido da semana, entrega e cobrança da semana anterior — tudo num lugar só.</p>';
+  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">🚚 Rota semanal</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Monte o pedido, registre a entrega e receba o pagamento — tudo aqui, sem trocar de tela.</p>';
   const btnFechar=document.createElement('button');btnFechar.textContent='✕ Fechar';btnFechar.style.cssText='border:0;background:#f4f4f6;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;flex:none;min-height:40px';
   btnFechar.onclick=()=>bg.remove();
   header.append(tit,btnFechar);
@@ -2305,23 +2219,45 @@ function abrirRotaSemanal(){
     }
     clientesRota.forEach(cli=>{
       const saldo=saldoRotaCliente(cli.id);
-      const pedido=PEDIDOS_ROTA[cli.id]||{itens:[]};
+      const pedido=PEDIDOS_ROTA[cli.id]||(PEDIDOS_ROTA[cli.id]={itens:[]});
       const totalPedido=pedido.itens.reduce((s,i)=>s+i.qtd*i.preco,0);
       const card=document.createElement('div');card.className='cotacao-card';
+
       const topo=document.createElement('div');topo.style.cssText='display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px';
       topo.innerHTML='<div><div style="font-weight:800;font-size:14px">'+cli.nome+'</div>'+(cli.telefone?'<div style="font-size:11px;color:#9a9aa0">📞 '+cli.telefone+'</div>':'')+'</div>';
       const btnTirar=document.createElement('button');btnTirar.textContent='➖';btnTirar.title='Tirar da rota';btnTirar.style.cssText='border:0;background:none;color:#9a9aa0;font-size:14px;cursor:pointer;padding:4px 6px';
       btnTirar.onclick=()=>{if(!confirm('Tirar '+cli.nome+' da rota semanal? O histórico de entregas continua salvo.'))return;ROTA.clientesIds=ROTA.clientesIds.filter(id=>id!==cli.id);salvarRota();montarLista()};
       topo.appendChild(btnTirar);
       card.appendChild(topo);
+
       if(saldo>0){
-        const saldoBox=document.createElement('div');saldoBox.style.cssText='background:var(--vermelhobg);color:var(--vermelho);border-radius:10px;padding:8px 10px;font-size:12.5px;font-weight:800;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px';
-        saldoBox.innerHTML='<span>💰 Deve da entrega passada: '+dinheiro(saldo)+'</span>';
-        const btnReceber=document.createElement('button');btnReceber.textContent='💵 Receber';btnReceber.style.cssText='border:0;background:var(--verde);color:#fff;border-radius:8px;padding:6px 10px;font-weight:800;font-size:11.5px;cursor:pointer;flex:none';
-        btnReceber.onclick=()=>{bg.remove();receberPagamentoRota(cli)};
-        saldoBox.appendChild(btnReceber);
+        const saldoBox=document.createElement('div');saldoBox.style.cssText='background:var(--vermelhobg);color:var(--vermelho);border-radius:10px;padding:9px 10px;margin-bottom:10px';
+        const saldoTxt=document.createElement('div');saldoTxt.style.cssText='font-size:12.5px;font-weight:800;margin-bottom:7px';saldoTxt.textContent='💰 Deve da entrega passada: '+dinheiro(saldo);
+        saldoBox.appendChild(saldoTxt);
+        const pagLinha=document.createElement('div');pagLinha.style.cssText='display:flex;gap:6px';
+        const inpPagar=document.createElement('input');inpPagar.type='number';inpPagar.step='0.01';inpPagar.value=saldo.toFixed(2);inpPagar.style.cssText='flex:1;min-width:0;border:1px solid #f3c9c9;border-radius:8px;padding:7px 8px;font-size:12.5px;background:#fff';
+        const btnConfirmarPag=document.createElement('button');btnConfirmarPag.textContent='✅ Confirmar recebimento';btnConfirmarPag.style.cssText='border:0;background:var(--verde);color:#fff;border-radius:8px;padding:7px 10px;font-weight:800;font-size:11.5px;cursor:pointer;flex:none';
+        btnConfirmarPag.onclick=()=>{
+          let valor=Number(inpPagar.value);
+          if(!valor||valor<=0)return toast('Informa um valor válido');
+          if(valor>saldo+0.009)valor=saldo;
+          const abertas=vendasAbertasRota(cli.id);
+          let restante=valor;
+          for(const v of abertas){
+            if(restante<=0)break;
+            const faltaV=v.total-(v.valorPago||0);
+            const usa=Math.min(faltaV,restante);
+            v.valorPago=(v.valorPago||0)+usa;
+            if(v.valorPago>=v.total-0.009){v.pago=true;v.valorPago=v.total}
+            restante-=usa;
+          }
+          salvar();toast('Pagamento registrado');montarLista();
+        };
+        pagLinha.append(inpPagar,btnConfirmarPag);
+        saldoBox.appendChild(pagLinha);
         card.appendChild(saldoBox);
       }
+
       const tit2=document.createElement('div');tit2.style.cssText='font-size:11px;font-weight:800;color:#7a7264;text-transform:uppercase;margin:6px 0 6px';tit2.textContent='📦 Pedido pra próxima entrega';
       card.appendChild(tit2);
       if(pedido.itens.length){
@@ -2339,15 +2275,103 @@ function abrirRotaSemanal(){
         const vazioP=document.createElement('div');vazioP.style.cssText='font-size:11.5px;color:#9a9aa0;padding:4px 0 8px';vazioP.textContent='Nenhum item ainda.';
         card.appendChild(vazioP);
       }
-      const btnAddItem=document.createElement('button');btnAddItem.textContent='+ Adicionar item ao pedido';btnAddItem.style.cssText='width:100%;margin-top:6px;border:1px solid #d8cfb8;background:#fff;color:#7a7264;border-radius:9px;padding:9px;font-weight:700;font-size:12px;cursor:pointer';
-      btnAddItem.onclick=()=>{bg.remove();adicionarItemPedidoRota(cli.id,()=>{fecharModal();abrirRotaSemanal()})};
-      card.appendChild(btnAddItem);
-      const btnEntregar=document.createElement('button');btnEntregar.textContent='🚚 Registrar entrega de hoje';btnEntregar.style.cssText='width:100%;margin-top:8px;border:0;background:#111;color:#fff;border-radius:10px;padding:10px;font-weight:800;font-size:12.5px;cursor:pointer';
-      btnEntregar.onclick=()=>{bg.remove();registrarEntregaRota(cli)};
+
+      const addWrap=document.createElement('div');addWrap.style.cssText='border:1px dashed #d8cfb8;border-radius:10px;padding:10px;margin-top:6px';
+      const selProd=document.createElement('select');selProd.style.cssText='width:100%;padding:9px;border:1px solid #e4e4e7;border-radius:8px;font-size:12.5px;background:#fafafa;margin-bottom:8px';
+      selProd.innerHTML=PRODUTOS.map(p=>'<option value="'+p.id+'">'+p.nome+'</option>').join('');
+      const modoWrap=document.createElement('div');modoWrap.className='opcoes';modoWrap.style.marginBottom='8px';
+      const camposLinha=document.createElement('div');camposLinha.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px';
+      const cQtd=document.createElement('div');cQtd.innerHTML='<label style="font-size:9.5px;color:#9a9aa0;font-weight:700;text-transform:uppercase">Quantidade</label>';
+      const inpQtd=document.createElement('input');inpQtd.type='number';inpQtd.value='1';inpQtd.style.cssText='width:100%;padding:8px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fff';
+      cQtd.appendChild(inpQtd);
+      const cPreco=document.createElement('div');cPreco.innerHTML='<label style="font-size:9.5px;color:#9a9aa0;font-weight:700;text-transform:uppercase">Preço combinado</label>';
+      const inpPreco=document.createElement('input');inpPreco.type='number';inpPreco.step='0.01';inpPreco.style.cssText='width:100%;padding:8px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fff';
+      cPreco.appendChild(inpPreco);
+      camposLinha.append(cQtd,cPreco);
+      let modoEscolhido='fardo';
+      function preencherPrecoSugerido(){
+        const p=PRODUTOS.find(x=>x.id===selProd.value),e=estado(p);
+        let sugestao=0;
+        if(modoEscolhido==='fardo')sugestao=e.precoFardo||e.precoGelado||e.precoQuente||0;
+        else if(modoEscolhido==='pacote')sugestao=e.precoFardo||0;
+        else if(modoEscolhido==='maco')sugestao=e.precoMaco||0;
+        else sugestao=e.precoUnidade||0;
+        inpPreco.value=sugestao||'';
+      }
+      function montarModos(){
+        modoWrap.innerHTML='';
+        const p=PRODUTOS.find(x=>x.id===selProd.value),e=estado(p);
+        const opcoes=[];
+        if(p.cigarro){opcoes.push(['pacote','Pacote'],['maco','Maço'],['unidade','Unidade'])}
+        else if(p.unidadeOnly||!e.pacote){opcoes.push(['unidade','Unidade'])}
+        else{opcoes.push(['fardo','Fardo/Pacote'],['unidade','Unidade avulsa'])}
+        modoEscolhido=opcoes[0][0];
+        opcoes.forEach(([v,l])=>{
+          const b=document.createElement('button');b.type='button';b.className='opcao'+(v===modoEscolhido?' ativa':'');b.textContent=l;b.style.fontSize='11px';
+          b.onclick=()=>{modoEscolhido=v;montarModos()};
+          modoWrap.appendChild(b);
+        });
+        preencherPrecoSugerido();
+      }
+      selProd.onchange=montarModos;
+      montarModos();
+      const btnAddItem=document.createElement('button');btnAddItem.textContent='+ Adicionar ao pedido';btnAddItem.style.cssText='width:100%;border:0;background:#111;color:#fff;border-radius:9px;padding:10px;font-weight:800;font-size:12.5px;cursor:pointer';
+      btnAddItem.onclick=()=>{
+        const p=PRODUTOS.find(x=>x.id===selProd.value),e=estado(p);
+        const qtd=Number(inpQtd.value)||0,preco=Number(inpPreco.value)||0;
+        if(qtd<=0)return toast('Quantidade inválida');
+        if(preco<=0)return toast('Informa o preço combinado');
+        const fator=modoEscolhido==='fardo'?(e.pacote||1):modoEscolhido==='pacote'?200:modoEscolhido==='maco'?20:1;
+        pedido.itens.push({produtoId:p.id,nome:p.nome,qtd,preco,modo:modoEscolhido,fator});
+        salvarPedidosRota();
+        montarLista();
+      };
+      addWrap.append(selProd,modoWrap,camposLinha,btnAddItem);
+      card.appendChild(addWrap);
+
+      const btnEntregar=document.createElement('button');btnEntregar.textContent='🚚 Registrar entrega de hoje';btnEntregar.style.cssText='width:100%;margin-top:10px;border:0;background:var(--verde);color:#fff;border-radius:10px;padding:11px;font-weight:800;font-size:12.5px;cursor:pointer';
+      btnEntregar.disabled=!pedido.itens.length;
+      if(!pedido.itens.length)btnEntregar.style.opacity='.5';
+      btnEntregar.onclick=()=>{
+        if(!pedido.itens.length)return;
+        if(!confirm('Registrar a entrega de hoje pra '+cli.nome+'? Isso desconta do seu estoque e fica pendente até você receber.'))return;
+        const r=processarEntregaRota(cli,pedido);
+        if(r.erro)return toast(r.erro);
+        toast('Entrega registrada! Nº'+r.venda.numero);
+        montarLista();
+      };
       card.appendChild(btnEntregar);
-      const btnHist=document.createElement('button');btnHist.textContent='🧾 Ver entregas anteriores';btnHist.style.cssText='width:100%;margin-top:6px;border:0;background:none;color:#9a9aa0;border-radius:8px;padding:7px;font-weight:700;font-size:11px;cursor:pointer';
-      btnHist.onclick=()=>{bg.remove();abrirHistoricoRota(cli)};
-      card.appendChild(btnHist);
+
+      let historicoAberto=false;
+      const btnHist=document.createElement('button');btnHist.textContent='🧾 Ver entregas anteriores';btnHist.style.cssText='width:100%;margin-top:8px;border:0;background:none;color:#9a9aa0;border-radius:8px;padding:7px;font-weight:700;font-size:11px;cursor:pointer';
+      const histWrap=document.createElement('div');histWrap.style.display='none';
+      btnHist.onclick=()=>{
+        historicoAberto=!historicoAberto;
+        if(historicoAberto){
+          btnHist.textContent='🔼 Esconder entregas anteriores';
+          histWrap.innerHTML='';
+          const entregas=VENDAS.filter(v=>v.pagamento==='rota'&&v.clienteId===cli.id).sort((a,b)=>b.ts-a.ts);
+          if(!entregas.length){
+            const p2=document.createElement('p');p2.style.cssText='font-size:11.5px;color:#9a9aa0;padding:6px 0';p2.textContent='Nenhuma entrega registrada ainda.';
+            histWrap.appendChild(p2);
+          }
+          entregas.forEach(v=>{
+            const d=document.createElement('div');d.style.cssText='border-top:1px solid #f4f4f6;padding:8px 0;font-size:12px';
+            const status=v.pago?'✅ Pago':((v.valorPago||0)>0?'🟡 Parcial ('+dinheiro(v.valorPago)+' de '+dinheiro(v.total)+')':'🔴 Em aberto');
+            d.innerHTML='<div style="display:flex;justify-content:space-between"><b>'+new Date(v.ts).toLocaleDateString('pt-BR')+'</b><b>'+dinheiro(v.total)+'</b></div><div style="color:#9a9aa0;font-size:11px">Nº'+v.numero+' · '+status+'</div>';
+            const btnVer=document.createElement('button');btnVer.textContent='🧾 Ver cupom';btnVer.style.cssText='margin-top:5px;border:0;border-radius:6px;padding:5px 8px;background:var(--creme2);color:#7a7264;font-weight:700;font-size:10.5px;cursor:pointer';
+            btnVer.onclick=()=>{bg.remove();abrirCupom(v)};
+            d.appendChild(btnVer);
+            histWrap.appendChild(d);
+          });
+          histWrap.style.display='block';
+        }else{
+          btnHist.textContent='🧾 Ver entregas anteriores';
+          histWrap.style.display='none';
+        }
+      };
+      card.append(btnHist,histWrap);
+
       body.appendChild(card);
     });
   }
