@@ -572,7 +572,7 @@ function abrirReposicao(p){
 }
 function atualizarCarrinho(){const n=CARRINHO.reduce((s,i)=>s+i.qtd,0),t=CARRINHO.reduce((s,i)=>s+i.total,0);document.getElementById('cartCount').textContent=n;document.getElementById('cartTotal').textContent=dinheiro(t);document.getElementById('cartFab').classList.toggle('hide',CARRINHO.length===0)}
 function abrirCarrinho(){const editando=!!window._editandoVendaId;const editandoOrc=!!window._editandoOrcamentoId;const m=baseModal(editando?'✏️ Editando venda':(editandoOrc?'✏️ Editando orçamento':'🛒 Carrinho de vendas'),CARRINHO.length?((editando||editandoOrc)?'Adicione, remova ou ajuste os itens e depois salve as alterações.':'Confira, ajuste e confirme a venda.'):'Seu carrinho está vazio.');if(!CARRINHO.length)return;if(editando){const avisoEd=document.createElement('div');avisoEd.style.cssText='background:var(--azulbg);color:var(--azul);border-radius:10px;padding:9px 11px;font-size:12px;font-weight:700;margin-bottom:10px';avisoEd.textContent='✏️ Editando a venda Nº'+(VENDAS.find(x=>x.id===window._editandoVendaId)?.numero??'')+' — isso não é uma venda nova.';m.appendChild(avisoEd)}if(editandoOrc){const avisoEd=document.createElement('div');avisoEd.style.cssText='background:var(--azulbg);color:var(--azul);border-radius:10px;padding:9px 11px;font-size:12px;font-weight:700;margin-bottom:10px';avisoEd.textContent='✏️ Editando o orçamento Nº'+(ORCAMENTOS.find(x=>x.id===window._editandoOrcamentoId)?.numero??'')+' — o estoque não é afetado.';m.appendChild(avisoEd)}CARRINHO.forEach(item=>{const d=document.createElement('div');d.className='cart-item';d.innerHTML='<div class="cart-top"><span><b>'+item.nome+'</b><br><small>'+(item.isCombo?'Kit/Combo':item.modo+(item.temperatura?' · '+item.temperatura:''))+'</small></span><b>'+dinheiro(item.total)+'</b></div><div class="cart-controls"><button>−</button><b>'+item.qtd+'</b><button>+</button><button class="remover">Remover</button></div>';const [menos,mais,rem]=d.querySelectorAll('button');menos.onclick=()=>{item.qtd--;if(item.qtd<1)CARRINHO=CARRINHO.filter(x=>x.id!==item.id);else item.total=item.qtd*item.preco;salvar();atualizarCarrinho();abrirCarrinho()};mais.onclick=()=>{item.qtd++;item.total=item.qtd*item.preco;salvar();atualizarCarrinho();abrirCarrinho()};rem.onclick=()=>{CARRINHO=CARRINHO.filter(x=>x.id!==item.id);salvar();atualizarCarrinho();abrirCarrinho()};m.appendChild(d)});const lCli=document.createElement('div');lCli.style.cssText='font-size:11px;color:#7a7264;margin:8px 0 3px;font-weight:700';lCli.textContent='Cliente (opcional)';const btnSelCli=document.createElement('button');btnSelCli.type='button';btnSelCli.textContent='👥 Selecionar cliente cadastrado';btnSelCli.style.cssText='width:100%;padding:9px;border:1px solid #d8cfb8;border-radius:9px;background:var(--creme2);color:#7a7264;font-weight:700;font-size:12.5px;margin-bottom:6px';btnSelCli.onclick=()=>abrirClientes(cli=>{window._clienteAtual=cli.nome;window._clienteIdAtual=cli.id;abrirCarrinho()});const inpCli=document.createElement('input');inpCli.className='campo';inpCli.placeholder='Ou digita o nome aqui';inpCli.value=window._clienteAtual||'';inpCli.oninput=()=>{window._clienteAtual=inpCli.value;window._clienteIdAtual=null};const lDesc=document.createElement('div');lDesc.style.cssText='font-size:11px;color:#7a7264;margin:4px 0 3px;font-weight:700';lDesc.textContent='Desconto R$ (opcional)';const inpDesc=document.createElement('input');inpDesc.className='campo';inpDesc.type='number';inpDesc.step='0.01';inpDesc.placeholder='0,00';inpDesc.value=window._descontoAtual||'';const subtotal=CARRINHO.reduce((s,i)=>s+i.total,0);const box=document.createElement('div');box.className='totalbox';function atualizaBox(){const desc=Number(inpDesc.value)||0;window._descontoAtual=inpDesc.value;box.innerHTML='<small>TOTAL DA VENDA</small><br><b>'+dinheiro(subtotal-desc)+'</b>'+(desc>0?'<div style="font-size:11px;margin-top:3px;color:#bdb6a4">Subtotal '+dinheiro(subtotal)+' − desconto '+dinheiro(desc)+'</div>':'')}inpDesc.oninput=atualizaBox;m.append(lCli,btnSelCli,inpCli,lDesc,inpDesc);atualizaBox();m.appendChild(box);const lPag=document.createElement('div');lPag.style.cssText='font-size:11px;color:#7a7264;margin:8px 0 5px;font-weight:700';lPag.textContent='Forma de pagamento';const pagOps=document.createElement('div');pagOps.className='opcoes';window._pagamentoAtual=window._pagamentoAtual||'dinheiro';[['dinheiro','💵 Dinheiro'],['pix','📱 PIX'],['cartao','💳 Cartão'],['fiado','🧾 Fiado (a receber)'],['rota','🚚 Rota semanal (consignado)']].forEach(([v,l])=>{const b=document.createElement('button');b.className='opcao'+(window._pagamentoAtual===v?' ativa':'');b.textContent=l;b.onclick=()=>{window._pagamentoAtual=v;abrirCarrinho()};pagOps.appendChild(b)});if(!editandoOrc){m.append(lPag,pagOps)}if(!editandoOrc&&window._pagamentoAtual==='dinheiro'){const lTroco=document.createElement('div');lTroco.style.cssText='font-size:11px;color:#7a7264;margin:10px 0 5px;font-weight:700';lTroco.textContent='💵 Troco — quanto o cliente te deu?';const inpTroco=document.createElement('input');inpTroco.className='campo';inpTroco.type='number';inpTroco.step='0.01';inpTroco.placeholder='Valor recebido em dinheiro';inpTroco.value=window._valorRecebido||'';const trocoBox=document.createElement('div');trocoBox.style.cssText='margin-top:8px;font-size:14px;font-weight:800;text-align:center;padding:10px;border-radius:10px';function atualizaTroco(){window._valorRecebido=inpTroco.value;const recebido=Number(inpTroco.value)||0;const totalVenda=subtotal-(Number(inpDesc.value)||0);const troco=recebido-totalVenda;if(!inpTroco.value){trocoBox.style.background='#f4f4f6';trocoBox.style.color='#9a9aa0';trocoBox.textContent='Digita quanto o cliente te deu'}else if(troco<-0.004){trocoBox.style.background='var(--vermelhobg)';trocoBox.style.color='var(--vermelho)';trocoBox.textContent='Falta '+dinheiro(Math.abs(troco))}else{trocoBox.style.background='var(--verdebg)';trocoBox.style.color='var(--verde)';trocoBox.textContent='Troco: '+dinheiro(Math.max(troco,0))}}inpTroco.oninput=atualizaTroco;m.append(lTroco,inpTroco,trocoBox);atualizaTroco()}if(!editando&&!editandoOrc){const btnOrc=document.createElement('button');btnOrc.textContent='📝 Só gerar orçamento (não desconta estoque)';btnOrc.style.cssText='width:100%;padding:10px;border:1px solid #d8cfb8;border-radius:9px;background:#fff;color:#7a7264;font-weight:700;font-size:12.5px;margin-bottom:10px';btnOrc.onclick=gerarOrcamento;m.appendChild(btnOrc)}const bs=document.createElement('div');bs.className='botoes';bs.innerHTML='<button class="cancelar">'+((editando||editandoOrc)?'❌ Cancelar edição':'Continuar comprando')+'</button><button class="confirmar">'+((editando||editandoOrc)?'💾 Salvar alterações':'Confirmar venda')+'</button>';bs.firstChild.onclick=editando?cancelarEdicaoVenda:(editandoOrc?cancelarEdicaoOrcamento:fecharModal);bs.lastChild.onclick=confirmarCarrinho;m.appendChild(bs)}
-function confirmarCarrinho(){if(window._editandoOrcamentoId)return confirmarEdicaoOrcamento();if(window._editandoVendaId)return confirmarEdicaoVenda();const necessidade={};CARRINHO.forEach(i=>{if(i.isCombo){i.componentes.forEach(comp=>necessidade[comp.produtoId]=(necessidade[comp.produtoId]||0)+i.qtd*comp.qtd)}else{necessidade[i.produtoId]=(necessidade[i.produtoId]||0)+i.qtd*i.fator}});for(const id in necessidade){const p=PRODUTOS.find(x=>x.id===id);if(!p)continue;const e=estado(p);if(disponivel(p,e)<necessidade[id])return toast('Estoque insuficiente: '+p.nome)}CARRINHO.forEach(i=>{if(i.isCombo){i.componentes.forEach(comp=>{const p=PRODUTOS.find(x=>x.id===comp.produtoId);if(!p)return;const e=estado(p),baixa=i.qtd*comp.qtd;if(p.cigarro)e.cigarros-=baixa;else if(e.pacote){const total=e.qtd*e.pacote+e.resto-baixa;e.qtd=Math.floor(total/e.pacote);e.resto=total%e.pacote}else e.qtd-=baixa});return}const p=PRODUTOS.find(x=>x.id===i.produtoId),e=estado(p),baixa=i.qtd*i.fator;if(p.cigarro)e.cigarros-=baixa;else if(e.pacote){const total=e.qtd*e.pacote+e.resto-baixa;e.qtd=Math.floor(total/e.pacote);e.resto=total%e.pacote}else e.qtd-=baixa});const subtotal=CARRINHO.reduce((s,i)=>s+i.total,0),desconto=Number(window._descontoAtual)||0,pagamento=window._pagamentoAtual||'dinheiro',cliente=(window._clienteAtual||'').trim(),clienteId=window._clienteIdAtual||null,numero=PROX_VENDA;PROX_VENDA++;const venda={id:Date.now(),numero,data:hoje(),ts:Date.now(),itens:CARRINHO.map(x=>({...x})),subtotal,desconto,total:subtotal-desconto,cliente,clienteId,pagamento,pago:!['fiado','rota'].includes(pagamento),valorPago:0};VENDAS.push(venda);if(pagamento==='rota'&&clienteId&&PEDIDOS_ROTA[clienteId]){delete PEDIDOS_ROTA[clienteId];salvarPedidosRota()}CARRINHO=[];window._clienteAtual='';window._clienteIdAtual=null;window._descontoAtual='';window._valorRecebido='';window._pagamentoAtual='dinheiro';salvar();render();abrirCupom(venda);toast('Venda confirmada')}
+function confirmarCarrinho(){if(window._editandoOrcamentoId)return confirmarEdicaoOrcamento();if(window._editandoVendaId)return confirmarEdicaoVenda();const necessidade={};CARRINHO.forEach(i=>{if(i.isCombo){i.componentes.forEach(comp=>necessidade[comp.produtoId]=(necessidade[comp.produtoId]||0)+i.qtd*comp.qtd)}else{necessidade[i.produtoId]=(necessidade[i.produtoId]||0)+i.qtd*i.fator}});for(const id in necessidade){const p=PRODUTOS.find(x=>x.id===id);if(!p)continue;const e=estado(p);if(disponivel(p,e)<necessidade[id])return toast('Estoque insuficiente: '+p.nome)}CARRINHO.forEach(i=>{if(i.isCombo){i.componentes.forEach(comp=>{const p=PRODUTOS.find(x=>x.id===comp.produtoId);if(!p)return;const e=estado(p),baixa=i.qtd*comp.qtd;if(p.cigarro)e.cigarros-=baixa;else if(e.pacote){const total=e.qtd*e.pacote+e.resto-baixa;e.qtd=Math.floor(total/e.pacote);e.resto=total%e.pacote}else e.qtd-=baixa});return}const p=PRODUTOS.find(x=>x.id===i.produtoId),e=estado(p),baixa=i.qtd*i.fator;if(p.cigarro)e.cigarros-=baixa;else if(e.pacote){const total=e.qtd*e.pacote+e.resto-baixa;e.qtd=Math.floor(total/e.pacote);e.resto=total%e.pacote}else e.qtd-=baixa});const subtotal=CARRINHO.reduce((s,i)=>s+i.total,0),desconto=Number(window._descontoAtual)||0,pagamento=window._pagamentoAtual||'dinheiro',cliente=(window._clienteAtual||'').trim(),clienteId=window._clienteIdAtual||null,numero=PROX_VENDA;PROX_VENDA++;const venda={id:Date.now(),numero,data:hoje(),ts:Date.now(),itens:CARRINHO.map(x=>({...x})),subtotal,desconto,total:subtotal-desconto,cliente,clienteId,pagamento,pago:!['fiado','rota'].includes(pagamento),valorPago:0,pagamentos:[]};VENDAS.push(venda);if(pagamento==='rota'&&clienteId&&PEDIDOS_ROTA[clienteId]){delete PEDIDOS_ROTA[clienteId];salvarPedidosRota()}CARRINHO=[];window._clienteAtual='';window._clienteIdAtual=null;window._descontoAtual='';window._valorRecebido='';window._pagamentoAtual='dinheiro';salvar();render();abrirCupom(venda);toast('Venda confirmada')}
 function editarItensVenda(id){
   const v=VENDAS.find(x=>x.id===id);if(!v)return;
   if(DIAS_FECHADOS[v.data])return toast('Esse dia já foi fechado — reabre ele primeiro (botão 🔓) pra poder editar essa venda');
@@ -913,12 +913,35 @@ function abrirCupom(v){
   fechar.onclick=fecharModal;
   m.appendChild(fechar);
 }
+function telefoneCliente(v){
+  if(v.clienteId){const c=CLIENTES.find(x=>x.id===v.clienteId);if(c&&c.telefone)return c.telefone.replace(/\D/g,'')}
+  return '';
+}
+function enviarComprovantePagamento(v,valorAgora){
+  const nome=v.cliente||'Cliente';
+  const agora=new Date();
+  let txt='✅ *Pagamento recebido* — '+(LOJA.nome||'VH Bebidas')+'\n\n';
+  txt+='Cliente: '+nome+'\n';
+  txt+='Data: '+agora.toLocaleDateString('pt-BR')+' às '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'\n';
+  txt+='Venda Nº'+v.numero+'\n';
+  txt+='Valor pago agora: '+dinheiro(valorAgora)+'\n';
+  if(v.pago)txt+='\n🎉 Conta quitada! Muito obrigado.';
+  else txt+='Saldo que ainda falta: '+dinheiro(v.total-(v.valorPago||0));
+  const tel=telefoneCliente(v);
+  const link=encodeURIComponent(txt);
+  if(tel){window.open('https://wa.me/55'+tel+'?text='+link,'_blank')}
+  else if(navigator.share){navigator.share({text:txt,title:'Comprovante de pagamento'}).catch(()=>{})}
+  else{window.open('https://wa.me/?text='+link,'_blank')}
+}
 function abrirFiados(){
   const pendentes=VENDAS.filter(v=>v.pagamento==='fiado'&&!v.pago).sort((a,b)=>b.ts-a.ts);
   const total=pendentes.reduce((s,v)=>s+(v.total-(v.valorPago||0)),0);
   const pagos=VENDAS.filter(v=>v.pagamento==='fiado'&&v.pago).sort((a,b)=>b.ts-a.ts);
   const m=baseModal('💰 Fiado — a receber',pendentes.length?'Vendas fiadas que ainda não foram pagas.':'Nenhuma venda fiada em aberto no momento.');
   const box=document.createElement('div');box.className='totalbox';box.innerHTML='<small>TOTAL EM ABERTO</small><br><b>'+dinheiro(total)+'</b>';m.appendChild(box);
+  const btnExtrato=document.createElement('button');btnExtrato.textContent='📋 Extrato por cliente (histórico completo)';btnExtrato.style.cssText='width:100%;padding:10px;border:1px solid #d8cfb8;border-radius:9px;background:#fff;color:#7a7264;font-weight:700;font-size:12.5px;margin-bottom:10px';
+  btnExtrato.onclick=()=>abrirListaExtratoClientes();
+  m.appendChild(btnExtrato);
   pendentes.forEach(v=>{
     const d=document.createElement('div');d.className='venda-item';
     const valorPago=v.valorPago||0,restante=v.total-valorPago;
@@ -943,6 +966,24 @@ function abrirFiados(){
     })
   }
 }
+function mostrarConfirmacaoPagamento(v,valorAgora){
+  const m=baseModal('✅ Pagamento registrado',(v.pago?'Conta quitada! ':'Ainda falta '+dinheiro(v.total-(v.valorPago||0))+'. ')+'Quer avisar o cliente agora?');
+  const btnEnviar=document.createElement('button');btnEnviar.textContent='📤 Enviar comprovante pro cliente (WhatsApp)';btnEnviar.style.cssText='width:100%;padding:12px;border:0;border-radius:10px;background:var(--verde);color:#fff;font-weight:800;font-size:13px;margin-bottom:8px';
+  btnEnviar.onclick=()=>enviarComprovantePagamento(v,valorAgora);
+  m.appendChild(btnEnviar);
+  const bs=document.createElement('div');bs.className='botoes';bs.innerHTML='<button class="cancelar" style="grid-column:1/-1">Voltar pro Fiado</button>';
+  bs.firstChild.onclick=()=>abrirFiados();
+  m.appendChild(bs);
+}
+function mostrarConfirmacaoPagamentoRota(v,valorAgora,cliente){
+  const m=baseModal('✅ Pagamento registrado',(v.pago?'Conta quitada! ':'Ainda falta '+dinheiro(v.total-(v.valorPago||0))+'. ')+'Quer avisar '+cliente.nome+' agora?');
+  const btnEnviar=document.createElement('button');btnEnviar.textContent='📤 Enviar comprovante pro cliente (WhatsApp)';btnEnviar.style.cssText='width:100%;padding:12px;border:0;border-radius:10px;background:var(--verde);color:#fff;font-weight:800;font-size:13px;margin-bottom:8px';
+  btnEnviar.onclick=()=>enviarComprovantePagamento(v,valorAgora);
+  m.appendChild(btnEnviar);
+  const bs=document.createElement('div');bs.className='botoes';bs.innerHTML='<button class="cancelar" style="grid-column:1/-1">Voltar pra rota semanal</button>';
+  bs.firstChild.onclick=()=>{fecharModal();abrirRotaSemanal()};
+  m.appendChild(bs);
+}
 function registrarPagamentoParcial(id){
   const v=VENDAS.find(x=>x.id===id);if(!v)return;
   const restante=v.total-(v.valorPago||0);
@@ -957,14 +998,63 @@ function registrarPagamentoParcial(id){
     if(!valor||valor<=0)return toast('Informa um valor válido');
     if(valor>restante+0.009)return toast('Esse valor é maior que o que falta ('+dinheiro(restante)+')');
     v.valorPago=(v.valorPago||0)+valor;
-    if(v.valorPago>=v.total-0.009){v.pago=true;v.valorPago=v.total;toast('Pago totalmente! 🎉')}
-    else toast('Pagamento parcial registrado — ainda falta '+dinheiro(v.total-v.valorPago));
-    salvar();abrirFiados();
+    (v.pagamentos=v.pagamentos||[]).push({valor,ts:Date.now()});
+    if(v.valorPago>=v.total-0.009){v.pago=true;v.valorPago=v.total}
+    salvar();
+    mostrarConfirmacaoPagamento(v,valor);
   };
   m.appendChild(bs);
 }
-function marcarPago(id){const v=VENDAS.find(x=>x.id===id);if(!v)return;v.pago=true;v.valorPago=v.total;salvar();fecharModal();abrirFiados();toast('Marcado como pago')}
-function desmarcarPago(id){const v=VENDAS.find(x=>x.id===id);if(!v)return;v.pago=false;v.valorPago=0;salvar();fecharModal();abrirFiados();toast('Venda voltou pra fiado pendente')}
+function marcarPago(id){
+  const v=VENDAS.find(x=>x.id===id);if(!v)return;
+  const diferenca=v.total-(v.valorPago||0);
+  if(diferenca>0)(v.pagamentos=v.pagamentos||[]).push({valor:diferenca,ts:Date.now()});
+  v.pago=true;v.valorPago=v.total;
+  salvar();
+  mostrarConfirmacaoPagamento(v,diferenca);
+}
+function desmarcarPago(id){const v=VENDAS.find(x=>x.id===id);if(!v)return;v.pago=false;v.valorPago=0;v.pagamentos=[];salvar();fecharModal();abrirFiados();toast('Venda voltou pra fiado pendente')}
+function abrirListaExtratoClientes(){
+  const nomes=[...new Set(VENDAS.filter(v=>(v.pagamento==='fiado'||v.pagamento==='rota')&&(v.cliente||'').trim()).map(v=>v.cliente.trim()))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const m=baseModal('📋 Extrato por cliente',nomes.length?'Escolhe o cliente pra ver o histórico completo de fiado — datas, horários e o que já foi pago.':'Nenhum cliente com fiado registrado ainda.');
+  nomes.forEach(nome=>{
+    const vendasCliente=VENDAS.filter(v=>(v.pagamento==='fiado'||v.pagamento==='rota')&&(v.cliente||'').trim()===nome);
+    const emAberto=vendasCliente.filter(v=>!v.pago).reduce((s,v)=>s+(v.total-(v.valorPago||0)),0);
+    const b=document.createElement('button');b.style.cssText='width:100%;text-align:left;border:0;border-bottom:1px solid #f0f0f2;padding:12px 4px;background:none;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer';
+    b.innerHTML='<span style="font-weight:700;font-size:13px">'+nome+'</span><span style="font-weight:800;font-size:12.5px;color:'+(emAberto>0?'var(--vermelho)':'var(--verde)')+'">'+(emAberto>0?dinheiro(emAberto)+' em aberto':'✅ Em dia')+'</span>';
+    b.onclick=()=>abrirExtratoCliente(nome);
+    m.appendChild(b);
+  });
+}
+function abrirExtratoCliente(nome){
+  const vendasCliente=VENDAS.filter(v=>(v.pagamento==='fiado'||v.pagamento==='rota')&&(v.cliente||'').trim()===nome).sort((a,b)=>b.ts-a.ts);
+  const emAberto=vendasCliente.filter(v=>!v.pago).reduce((s,v)=>s+(v.total-(v.valorPago||0)),0);
+  const m=baseModal('📋 Extrato — '+nome,'Histórico completo, com data e hora de cada pagamento registrado.');
+  const box=document.createElement('div');box.className='totalbox';box.innerHTML='<small>SALDO EM ABERTO</small><br><b>'+dinheiro(emAberto)+'</b>';m.appendChild(box);
+  const btnVoltar=document.createElement('button');btnVoltar.textContent='← Voltar pra lista de clientes';btnVoltar.style.cssText='width:100%;padding:9px;border:1px solid #d8cfb8;border-radius:9px;background:#fff;color:#7a7264;font-weight:700;font-size:12px;margin-bottom:10px';
+  btnVoltar.onclick=()=>abrirListaExtratoClientes();
+  m.appendChild(btnVoltar);
+  vendasCliente.forEach(v=>{
+    const d=document.createElement('div');d.className='venda-item';
+    const status=v.pago?'✅ QUITADO':((v.valorPago||0)>0?'🟡 PARCIAL':'🔴 EM ABERTO');
+    let html='<div class="cart-top"><span><b>Venda Nº'+v.numero+'</b> · '+new Date(v.ts).toLocaleDateString('pt-BR')+'<br><small>'+status+' · Total '+dinheiro(v.total)+(v.pagamento==='rota'?' · Rota semanal':'')+'</small></span><b>'+dinheiro(v.total-(v.valorPago||0))+'</b></div>';
+    d.innerHTML=html;
+    if((v.pagamentos||[]).length){
+      const lista=document.createElement('div');lista.style.cssText='margin-top:8px;padding-top:8px;border-top:1px solid #f0f0f2';
+      v.pagamentos.forEach(pg=>{
+        const linha=document.createElement('div');linha.style.cssText='font-size:11.5px;color:#7a7264;padding:2px 0';
+        const dt=new Date(pg.ts);
+        linha.textContent='💵 '+dinheiro(pg.valor)+' — recebido em '+dt.toLocaleDateString('pt-BR')+' às '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+        lista.appendChild(linha);
+      });
+      d.appendChild(lista);
+    }
+    const btnVer=document.createElement('button');btnVer.textContent='🧾 Ver cupom';btnVer.style.cssText='width:100%;margin-top:8px;border:0;border-radius:7px;padding:7px;background:var(--creme2);color:#7a7264;font-weight:800;font-size:11.5px';
+    btnVer.onclick=()=>abrirCupom(v);
+    d.appendChild(btnVer);
+    m.appendChild(d);
+  });
+}
 function paraCSV(vendas){
   const linhas=[['Data','Nº Venda','Hora','Produto','Qtd','Preço Unit.','Total Item','Cliente','Pagamento','Status']];
   vendas.forEach(v=>{
@@ -2193,7 +2283,7 @@ function processarEntregaRota(cliente,pedido){
   });
   const subtotal=pedido.itens.reduce((s,i)=>s+i.qtd*i.preco,0);
   const numero=PROX_VENDA;PROX_VENDA++;
-  const venda={id:Date.now()+Math.random(),numero,data:hoje(),ts:Date.now(),itens:pedido.itens.map(i=>({id:Date.now()+Math.random(),produtoId:i.produtoId,nome:i.nome,qtd:i.qtd,preco:i.preco,total:i.qtd*i.preco,modo:i.modo,fator:i.fator})),subtotal,desconto:0,total:subtotal,cliente:cliente.nome,clienteId:cliente.id,pagamento:'rota',pago:false,valorPago:0};
+  const venda={id:Date.now()+Math.random(),numero,data:hoje(),ts:Date.now(),itens:pedido.itens.map(i=>({id:Date.now()+Math.random(),produtoId:i.produtoId,nome:i.nome,qtd:i.qtd,preco:i.preco,total:i.qtd*i.preco,modo:i.modo,fator:i.fator})),subtotal,desconto:0,total:subtotal,cliente:cliente.nome,clienteId:cliente.id,pagamento:'rota',pago:false,valorPago:0,pagamentos:[]};
   VENDAS.push(venda);
   delete PEDIDOS_ROTA[cliente.id];
   salvarPedidosRota();
@@ -2258,16 +2348,20 @@ function abrirRotaSemanal(){
           if(!valor||valor<=0)return toast('Informa um valor válido');
           if(valor>saldo+0.009)valor=saldo;
           const abertas=vendasAbertasRota(cli.id);
-          let restante=valor;
+          let restante=valor,ultimaVenda=null;
           for(const v of abertas){
             if(restante<=0)break;
             const faltaV=v.total-(v.valorPago||0);
             const usa=Math.min(faltaV,restante);
             v.valorPago=(v.valorPago||0)+usa;
+            (v.pagamentos=v.pagamentos||[]).push({valor:usa,ts:Date.now()});
             if(v.valorPago>=v.total-0.009){v.pago=true;v.valorPago=v.total}
             restante-=usa;
+            ultimaVenda=v;
           }
-          salvar();toast('Pagamento registrado');montarLista();
+          salvar();
+          if(ultimaVenda){bg.remove();mostrarConfirmacaoPagamentoRota(ultimaVenda,valor,cli)}
+          else montarLista();
         };
         pagLinha.append(inpPagar,btnConfirmarPag);
         saldoBox.appendChild(pagLinha);
