@@ -363,6 +363,15 @@ function card(p){
   if(p.cigarro){pr.append(precoInput('Pacote R$','precoFardo',e),precoInput('Maço R$','precoMaco',e),precoInput('Varejo R$','precoUnidade',e))}
   else{pr.append(precoInput(p.unidadeOnly?'Preço R$':'Unit. R$','precoUnidade',e));if(p.quenteGelado){pr.append(precoInput('🔥 Quente R$','precoQuente',e),precoInput('🧊 Gelado R$','precoGelado',e))}else if(!p.unidadeOnly&&e.pacote){pr.append(precoInput('Fardo R$','precoFardo',e))}}
 
+  const pacoteRow=document.createElement('div');pacoteRow.className='minrow';
+  if(!p.unidadeOnly&&!p.cigarro){
+    pacoteRow.innerHTML=e.pacote?'📦 Unidades por fardo/caixa ':'📦 Sem fardo/caixa definido — coloca quantas unidades tem ';
+    const pacoteInput=document.createElement('input');pacoteInput.className='minimo';pacoteInput.type='number';pacoteInput.value=e.pacote||'';
+    pacoteInput.onchange=()=>{e.pacote=Number(pacoteInput.value)||0;autoSalvar();const novoCard=card(p);novoCard.querySelector('.detalhes').classList.remove('hide');d.replaceWith(novoCard)};
+    pacoteRow.appendChild(pacoteInput);
+    if(!e.pacote){const dica=document.createElement('div');dica.style.cssText='font-size:9.5px;color:#9a9aa0;margin-top:3px';dica.textContent='Depois de colocar o número e sair do campo, o preço do fardo/caixa aparece aqui pra editar.';pacoteRow.appendChild(dica)}
+  }
+
   const custoRow=document.createElement('div');custoRow.className='minrow';custoRow.innerHTML='💰 Preço pago na última compra R$ ';
   const custoInput=document.createElement('input');custoInput.className='minimo';custoInput.style.width='64px';custoInput.type='number';custoInput.step='0.01';custoInput.placeholder='0,00';custoInput.value=e.custoUltimaCompra??'';
   custoInput.oninput=()=>{e.custoUltimaCompra=custoInput.value===''?null:Number(custoInput.value);autoSalvar()};
@@ -396,7 +405,7 @@ function card(p){
   btnPausarFull.textContent=e.pausado?'▶️ Ativar produto':'⏸️ Pausar produto (não tenho pra vender agora)';
   btnPausarFull.onclick=()=>{e.pausado=!e.pausado;salvar();render();toast(e.pausado?'Produto pausado':'Produto ativado')};
 
-  det.append(obsEl,pr,custoRow,mr,refRow,loteRow,sugTxt,btnCorrigirFull,btnPausarFull);
+  det.append(obsEl,pr,pacoteRow,custoRow,mr,refRow,loteRow,sugTxt,btnCorrigirFull,btnPausarFull);
   d.append(topo,acoes,det);
   return d;
 }
