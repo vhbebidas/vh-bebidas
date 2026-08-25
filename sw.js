@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vh-bebidas-shell-v1';
+const CACHE_NAME = 'vh-bebidas-shell-v2';
 const APP_SHELL = ['./', './index.html'];
 
 self.addEventListener('install', (event) => {
@@ -18,21 +18,23 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Estratégia: tenta a rede primeiro (pra sempre pegar a versão mais nova do app).
-// Se não tiver internet, cai pro que já foi salvo no aparelho.
+// Estratégia: usa primeiro o que já tá salvo no aparelho (rápido, sem gastar internet).
+// Só busca na rede se ainda não tiver nada salvo, ou se o app for atualizado
+// (troca de CACHE_NAME força o navegador a baixar tudo de novo, uma vez só).
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
 
   event.respondWith(
-    fetch(req)
-      .then((res) => {
-        const resClone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone)).catch(() => {});
-        return res;
-      })
-      .catch(() =>
-        caches.match(req).then((cached) => cached || caches.match('./index.html'))
-      )
+    caches.match(req).then((cached) => {
+      if (cached) return cached;
+      return fetch(req)
+        .then((res) => {
+          const resClone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, resClone)).catch(() => {});
+          return res;
+        })
+        .catch(() => caches.match('./index.html'));
+    })
   );
 });
