@@ -142,9 +142,16 @@ let ORCAMENTO_COMPRA=load('orcamento-compra-vh-v2','');
 function salvarOrcamentoCompra(){save('orcamento-compra-vh-v2',ORCAMENTO_COMPRA)}
 let TAXA_MAQUININHA=load('taxa-maquininha-vh-v2',0);
 function salvarTaxaMaquininha(){save('taxa-maquininha-vh-v2',TAXA_MAQUININHA)}
+let TAXA_DEBITO=load('taxa-debito-vh-v2',0);
+function salvarTaxaDebito(){save('taxa-debito-vh-v2',TAXA_DEBITO)}
 function precoCredito(preco){
   if(!preco||!TAXA_MAQUININHA)return preco;
   const bruto=preco/(1-TAXA_MAQUININHA/100);
+  return Math.round(bruto*2)/2;
+}
+function precoDebito(preco){
+  if(!preco||!TAXA_DEBITO)return preco;
+  const bruto=preco/(1-TAXA_DEBITO/100);
   return Math.round(bruto*2)/2;
 }
 let ROTA=load('rota-semanal-vh-v2',{diaSemana:1,clientesIds:[]});
@@ -491,7 +498,7 @@ function abrirCorrecaoEstoque(p){
   }
 }
 
-function abrirMovimento(tipo,p){const e=estado(p),venda=true,m=baseModal('➖ Adicionar venda',p.nome+' — estoque: '+estoqueTexto(p,e));let modo=p.cigarro?'maco':(p.unidadeOnly||!e.pacote?'unidade':'fardo'),temperatura=null,promoSelecionada=null,creditoAtivo=false;const ops=document.createElement('div');ops.className='opcoes';const modos=p.cigarro?[['pacote','📦 Pacote (10 maços)'],['maco','🚬 Maço (20 un.)'],['varejo','🧾 Varejo avulso']]:(p.unidadeOnly||!e.pacote?[['unidade','Unidade']]:[['fardo','📦 Fardo/PAC ('+e.pacote+')'],['unidade','Unidade avulsa']]);const qty=document.createElement('input'),preco=document.createElement('input'),total=document.createElement('div');qty.className=preco.className='campo';qty.type=preco.type='number';qty.min='1';qty.placeholder='Quantidade';preco.step='.01';preco.placeholder='Preço';total.className='total';function precoModo(){if(p.cigarro)return modo==='pacote'?e.precoFardo:modo==='maco'?e.precoMaco:e.precoUnidade;if(modo==='fardo'&&temperatura==='quente')return e.precoQuente;if(modo==='fardo'&&temperatura==='gelado')return e.precoGelado;return modo==='fardo'?e.precoFardo:e.precoUnidade}function promoAplicavel(){return venda&&modo==='unidade'&&(p.promoLevar||p.promoAqui)}function promoAtual(){return promoSelecionada==='levar'?p.promoLevar:(promoSelecionada==='aqui'?p.promoAqui:null)}function calcPromo(q){const pr=promoAtual(),combos=Math.floor(q/pr.qtd),resto=q%pr.qtd,precoAvulso=e.precoUnidade||0;return combos*pr.preco+resto*precoAvulso}function creditoAplicavel(){return venda&&TAXA_MAQUININHA>0&&!promoSelecionada&&precoModo()}function rec(){const q=Number(qty.value)||0;if(promoAplicavel()&&promoSelecionada){const t=calcPromo(q);total.textContent='Total: '+dinheiro(t);preco.value=q>0?(t/q).toFixed(2):(e.precoUnidade??'');preco.disabled=true}else if(creditoAplicavel()&&creditoAtivo){preco.value=precoCredito(precoModo());preco.disabled=true;total.textContent='Total: '+dinheiro(q*(Number(preco.value)||0))}else{preco.disabled=false;total.textContent='Total: '+dinheiro(q*(Number(preco.value)||0))}}function marca(){[...ops.children].forEach(b=>b.classList.toggle('ativa',b.dataset.v===modo));preco.value=precoModo()??'';rec();renderTemp();renderPromo();renderCredito()}modos.forEach(([v,l])=>{const b=document.createElement('button');b.className='opcao';b.dataset.v=v;b.textContent=l;b.onclick=()=>{modo=v;temperatura=null;marca()};ops.appendChild(b)});m.appendChild(ops);let tempWrap=document.createElement('div');tempWrap.className='opcoes';function renderTemp(){tempWrap.innerHTML='';if(venda&&modo==='fardo'&&p.quenteGelado){[['quente','🔥 Quente','temp-quente'],['gelado','🧊 Gelado','temp-gelado']].forEach(([v,l,cl])=>{const b=document.createElement('button');b.className='opcao '+cl+(temperatura===v?' ativa':'');b.textContent=l;b.onclick=()=>{temperatura=v;preco.value=precoModo()??'';renderTemp();rec()};tempWrap.appendChild(b)})}}m.appendChild(tempWrap);let promoWrap=document.createElement('div');promoWrap.className='opcoes';function renderPromo(){promoWrap.innerHTML='';if(!promoAplicavel())return;[['levar',p.promoLevar,'🚶 Pra levar'],['aqui',p.promoAqui,'🍺 Beber aqui']].forEach(([key,pr,label])=>{if(!pr)return;const ativa=promoSelecionada===key;const b=document.createElement('button');b.className='opcao'+(ativa?' ativa':'');b.style.cssText='min-width:100%;background:'+(ativa?'#ffe9b0':'#fff');b.textContent='🎉 '+label+': '+pr.qtd+' un. por '+dinheiro(pr.preco)+(ativa?' (ativa)':' (tocar pra ativar)');b.onclick=()=>{promoSelecionada=(promoSelecionada===key)?null:key;creditoAtivo=false;renderPromo();renderCredito();rec()};promoWrap.appendChild(b)})}m.appendChild(promoWrap);let creditoWrap=document.createElement('div');creditoWrap.className='opcoes';function renderCredito(){creditoWrap.innerHTML='';if(!creditoAplicavel())return;const b=document.createElement('button');b.className='opcao'+(creditoAtivo?' ativa':'');b.style.cssText='min-width:100%;background:'+(creditoAtivo?'#d7ecff':'#fff');b.textContent='💳 Vender no crédito (+'+TAXA_MAQUININHA+'%): '+dinheiro(precoCredito(precoModo()))+(creditoAtivo?' (ativo)':' (tocar pra ativar)');b.onclick=()=>{creditoAtivo=!creditoAtivo;renderCredito();rec()};creditoWrap.appendChild(b)}m.appendChild(creditoWrap);m.appendChild(qty);m.appendChild(preco);m.appendChild(total);qty.oninput=rec;preco.oninput=rec;
+function abrirMovimento(tipo,p){const e=estado(p),venda=true,m=baseModal('➖ Adicionar venda',p.nome+' — estoque: '+estoqueTexto(p,e));let modo=p.cigarro?'maco':(p.unidadeOnly||!e.pacote?'unidade':'fardo'),temperatura=null,promoSelecionada=null,creditoAtivo=false,debitoAtivo=false;const ops=document.createElement('div');ops.className='opcoes';const modos=p.cigarro?[['pacote','📦 Pacote (10 maços)'],['maco','🚬 Maço (20 un.)'],['varejo','🧾 Varejo avulso']]:(p.unidadeOnly||!e.pacote?[['unidade','Unidade']]:[['fardo','📦 Fardo/PAC ('+e.pacote+')'],['unidade','Unidade avulsa']]);const qty=document.createElement('input'),preco=document.createElement('input'),total=document.createElement('div');qty.className=preco.className='campo';qty.type=preco.type='number';qty.min='1';qty.placeholder='Quantidade';preco.step='.01';preco.placeholder='Preço';total.className='total';function precoModo(){if(p.cigarro)return modo==='pacote'?e.precoFardo:modo==='maco'?e.precoMaco:e.precoUnidade;if(modo==='fardo'&&temperatura==='quente')return e.precoQuente;if(modo==='fardo'&&temperatura==='gelado')return e.precoGelado;return modo==='fardo'?e.precoFardo:e.precoUnidade}function promoAplicavel(){return venda&&modo==='unidade'&&(p.promoLevar||p.promoAqui)}function promoAtual(){return promoSelecionada==='levar'?p.promoLevar:(promoSelecionada==='aqui'?p.promoAqui:null)}function calcPromo(q){const pr=promoAtual(),combos=Math.floor(q/pr.qtd),resto=q%pr.qtd,precoAvulso=e.precoUnidade||0;return combos*pr.preco+resto*precoAvulso}function creditoAplicavel(){return venda&&TAXA_MAQUININHA>0&&!promoSelecionada&&precoModo()}function debitoAplicavel(){return venda&&TAXA_DEBITO>0&&!promoSelecionada&&precoModo()}function rec(){const q=Number(qty.value)||0;if(promoAplicavel()&&promoSelecionada){const t=calcPromo(q);total.textContent='Total: '+dinheiro(t);preco.value=q>0?(t/q).toFixed(2):(e.precoUnidade??'');preco.disabled=true}else if(creditoAplicavel()&&creditoAtivo){preco.value=precoCredito(precoModo());preco.disabled=true;total.textContent='Total: '+dinheiro(q*(Number(preco.value)||0))}else if(debitoAplicavel()&&debitoAtivo){preco.value=precoDebito(precoModo());preco.disabled=true;total.textContent='Total: '+dinheiro(q*(Number(preco.value)||0))}else{preco.disabled=false;total.textContent='Total: '+dinheiro(q*(Number(preco.value)||0))}}function marca(){[...ops.children].forEach(b=>b.classList.toggle('ativa',b.dataset.v===modo));preco.value=precoModo()??'';rec();renderTemp();renderPromo();renderCredito();renderDebito()}modos.forEach(([v,l])=>{const b=document.createElement('button');b.className='opcao';b.dataset.v=v;b.textContent=l;b.onclick=()=>{modo=v;temperatura=null;marca()};ops.appendChild(b)});m.appendChild(ops);let tempWrap=document.createElement('div');tempWrap.className='opcoes';function renderTemp(){tempWrap.innerHTML='';if(venda&&modo==='fardo'&&p.quenteGelado){[['quente','🔥 Quente','temp-quente'],['gelado','🧊 Gelado','temp-gelado']].forEach(([v,l,cl])=>{const b=document.createElement('button');b.className='opcao '+cl+(temperatura===v?' ativa':'');b.textContent=l;b.onclick=()=>{temperatura=v;preco.value=precoModo()??'';renderTemp();renderCredito();renderDebito();rec()};tempWrap.appendChild(b)})}}m.appendChild(tempWrap);let promoWrap=document.createElement('div');promoWrap.className='opcoes';function renderPromo(){promoWrap.innerHTML='';if(!promoAplicavel())return;[['levar',p.promoLevar,'🚶 Pra levar'],['aqui',p.promoAqui,'🍺 Beber aqui']].forEach(([key,pr,label])=>{if(!pr)return;const ativa=promoSelecionada===key;const b=document.createElement('button');b.className='opcao'+(ativa?' ativa':'');b.style.cssText='min-width:100%;background:'+(ativa?'#ffe9b0':'#fff');b.textContent='🎉 '+label+': '+pr.qtd+' un. por '+dinheiro(pr.preco)+(ativa?' (ativa)':' (tocar pra ativar)');b.onclick=()=>{promoSelecionada=(promoSelecionada===key)?null:key;creditoAtivo=false;debitoAtivo=false;renderPromo();renderCredito();renderDebito();rec()};promoWrap.appendChild(b)})}m.appendChild(promoWrap);let creditoWrap=document.createElement('div');creditoWrap.className='opcoes';function renderCredito(){creditoWrap.innerHTML='';if(!creditoAplicavel())return;const b=document.createElement('button');b.className='opcao'+(creditoAtivo?' ativa':'');b.style.cssText='min-width:100%;background:'+(creditoAtivo?'#d7ecff':'#fff');b.textContent='💳 Vender no crédito (+'+TAXA_MAQUININHA+'%): '+dinheiro(precoCredito(precoModo()))+(creditoAtivo?' (ativo)':' (tocar pra ativar)');b.onclick=()=>{creditoAtivo=!creditoAtivo;if(creditoAtivo)debitoAtivo=false;renderCredito();renderDebito();rec()};creditoWrap.appendChild(b)}m.appendChild(creditoWrap);let debitoWrap=document.createElement('div');debitoWrap.className='opcoes';function renderDebito(){debitoWrap.innerHTML='';if(!debitoAplicavel())return;const b=document.createElement('button');b.className='opcao'+(debitoAtivo?' ativa':'');b.style.cssText='min-width:100%;background:'+(debitoAtivo?'#d7f7e0':'#fff');b.textContent='💳 Vender no débito (+'+TAXA_DEBITO+'%): '+dinheiro(precoDebito(precoModo()))+(debitoAtivo?' (ativo)':' (tocar pra ativar)');b.onclick=()=>{debitoAtivo=!debitoAtivo;if(debitoAtivo)creditoAtivo=false;renderCredito();renderDebito();rec()};debitoWrap.appendChild(b)}m.appendChild(debitoWrap);m.appendChild(qty);m.appendChild(preco);m.appendChild(total);qty.oninput=rec;preco.oninput=rec;
 function montarItem(){const q=Number(qty.value);if(!q||q<1){toast('Digite uma quantidade válida');return null}const fator=p.cigarro?(modo==='pacote'?200:modo==='maco'?20:1):(modo==='fardo'?e.pacote:1);let itemTotal,pu;if(promoAplicavel()&&promoSelecionada){itemTotal=calcPromo(q);pu=q>0?itemTotal/q:0}else{pu=Number(preco.value)||0;itemTotal=q*pu}return{id:Date.now()+Math.random(),produtoId:p.id,nome:p.nome,qtd:q,modo,temperatura,fator,preco:pu,total:itemTotal}}
 const btnRapida=document.createElement('button');btnRapida.textContent='⚡ Vender agora (sem carrinho)';btnRapida.style.cssText='width:100%;padding:13px;border:0;border-radius:10px;background:#111;color:#fff;font-weight:900;font-size:14px;margin-bottom:8px';btnRapida.onclick=()=>{const item=montarItem();if(!item)return;fecharModal();abrirVendaRapida(item)};m.appendChild(btnRapida);
 const bs=document.createElement('div');bs.className='botoes';bs.innerHTML='<button class="cancelar">Cancelar</button><button class="confirmar">➕ Adicionar ao carrinho</button>';bs.firstChild.onclick=fecharModal;bs.lastChild.onclick=()=>{const item=montarItem();if(!item)return;CARRINHO.push(item);salvar();atualizarCarrinho();fecharModal();toast('Item adicionado ao carrinho')};m.appendChild(bs);marca();setTimeout(()=>qty.focus(),50)}
@@ -1895,7 +1902,7 @@ function abrirMenu(){
     ['📋','Cotação de fornecedores',abrirCotacao],
     ['📈','Margem de lucro',abrirMargemLucro],
     ['🧮','Planejar compra (orçamento)',abrirPlanejadorCompras],
-    ['💳','Calculadora de crédito (taxa da maquininha)',abrirCalculadoraCredito],
+    ['💳','Calculadora crédito/débito (taxa da maquininha)',abrirCalculadoraCredito],
     ['🚚','Rota semanal (entrega/consignado)',abrirRotaSemanal],
     ['💵','Caixa'+(CAIXA.aberto?' (aberto)':' (fechado)'),abrirTelaCaixa],
     ['💰','Fiado (a receber)'+(pendFiado>0?' · '+pendFiado+' pendente'+(pendFiado>1?'s':''):''),abrirFiados],
@@ -2282,21 +2289,29 @@ function abrirCalculadoraCredito(){
   fecharModal();
   const bg=document.createElement('div');bg.className='cotacao-bg';
   const header=document.createElement('div');header.className='cotacao-header';
-  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">💳 Calculadora de crédito</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Coloca a taxa da sua maquininha e vê o preço certo pra cobrar no crédito de cada produto, sem perder dinheiro.</p>';
+  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">💳 Calculadora de crédito/débito</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Coloca a taxa da sua maquininha (crédito e débito são diferentes) e vê o preço certo pra cobrar em cada um, sem perder dinheiro.</p>';
   const btnFechar=document.createElement('button');btnFechar.textContent='✕ Fechar';btnFechar.style.cssText='border:0;background:#f4f4f6;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;flex:none;min-height:40px';
   btnFechar.onclick=()=>bg.remove();
   header.append(tit,btnFechar);
   bg.appendChild(header);
   const filtros=document.createElement('div');filtros.className='cotacao-filtros';
-  const cTaxa=document.createElement('div');cTaxa.style.cssText='display:flex;align-items:center;gap:6px;flex:1;min-width:170px;background:#fafafa;border:1px solid #e4e4e7;border-radius:12px;padding:0 10px';
-  cTaxa.innerHTML='<span style="font-size:11px;color:#9a9aa0;white-space:nowrap">💳 Taxa da maquininha</span>';
-  const inpTaxa=document.createElement('input');inpTaxa.type='number';inpTaxa.step='0.01';inpTaxa.value=TAXA_MAQUININHA||'';inpTaxa.placeholder='0';inpTaxa.style.cssText='border:0;background:transparent;padding:10px 4px;font-size:14px;width:60px;font-weight:800';
+  const cTaxa=document.createElement('div');cTaxa.style.cssText='display:flex;align-items:center;gap:6px;flex:1;min-width:150px;background:#fafafa;border:1px solid #e4e4e7;border-radius:12px;padding:0 10px';
+  cTaxa.innerHTML='<span style="font-size:11px;color:#9a9aa0;white-space:nowrap">💳 Crédito</span>';
+  const inpTaxa=document.createElement('input');inpTaxa.type='number';inpTaxa.step='0.01';inpTaxa.value=TAXA_MAQUININHA||'';inpTaxa.placeholder='0';inpTaxa.style.cssText='border:0;background:transparent;padding:10px 4px;font-size:14px;width:55px;font-weight:800';
   const spanPct=document.createElement('span');spanPct.style.cssText='font-size:12px;color:#9a9aa0';spanPct.textContent='%';
   cTaxa.append(inpTaxa,spanPct);
   filtros.appendChild(cTaxa);
-  const inpBusca=document.createElement('input');inpBusca.placeholder='Buscar produto...';
-  filtros.appendChild(inpBusca);
+  const cTaxaDeb=document.createElement('div');cTaxaDeb.style.cssText='display:flex;align-items:center;gap:6px;flex:1;min-width:150px;background:#fafafa;border:1px solid #e4e4e7;border-radius:12px;padding:0 10px';
+  cTaxaDeb.innerHTML='<span style="font-size:11px;color:#9a9aa0;white-space:nowrap">💳 Débito</span>';
+  const inpTaxaDeb=document.createElement('input');inpTaxaDeb.type='number';inpTaxaDeb.step='0.01';inpTaxaDeb.value=TAXA_DEBITO||'';inpTaxaDeb.placeholder='0';inpTaxaDeb.style.cssText='border:0;background:transparent;padding:10px 4px;font-size:14px;width:55px;font-weight:800';
+  const spanPctDeb=document.createElement('span');spanPctDeb.style.cssText='font-size:12px;color:#9a9aa0';spanPctDeb.textContent='%';
+  cTaxaDeb.append(inpTaxaDeb,spanPctDeb);
+  filtros.appendChild(cTaxaDeb);
   bg.appendChild(filtros);
+  const filtros2=document.createElement('div');filtros2.className='cotacao-filtros';
+  const inpBusca=document.createElement('input');inpBusca.placeholder='Buscar produto...';
+  filtros2.appendChild(inpBusca);
+  bg.appendChild(filtros2);
   const dica=document.createElement('p');dica.style.cssText='font-size:10.5px;color:#9a9aa0;padding:6px 14px 0;margin:0';dica.textContent='Se você trocar de maquininha ou a taxa mudar, é só atualizar aqui — todo o cálculo se ajusta sozinho, inclusive na hora de vender.';
   bg.appendChild(dica);
   const body=document.createElement('div');body.className='cotacao-body';
@@ -2320,22 +2335,23 @@ function abrirCalculadoraCredito(){
       const card=document.createElement('div');card.className='cotacao-card';
       const topo=document.createElement('div');topo.style.cssText='font-weight:800;font-size:13.5px;margin-bottom:8px';topo.textContent=p.nome;
       card.appendChild(topo);
-      const linha=document.createElement('div');linha.style.cssText='display:flex;justify-content:space-between;gap:8px;font-size:12px;flex-wrap:wrap';
-      const credito=precoCredito(precoBase);
-      linha.innerHTML='<span style="color:#9a9aa0">'+label+' no Pix/Dinheiro<br><b style="color:#1a1a1a;font-size:14px">'+dinheiro(precoBase)+'</b></span><span style="color:#9a9aa0;text-align:right">No crédito (cobrar)<br><b style="color:var(--verde);font-size:14px">'+dinheiro(credito)+'</b></span>';
+      const linha=document.createElement('div');linha.style.cssText='font-size:12px;margin-bottom:4px';
+      linha.innerHTML='<span style="color:#9a9aa0">'+label+' no Pix/Dinheiro: </span><b style="color:#1a1a1a;font-size:14px">'+dinheiro(precoBase)+'</b>';
       card.appendChild(linha);
-      if(TAXA_MAQUININHA>0){
-        const dif=document.createElement('div');dif.style.cssText='font-size:10.5px;color:#9a9aa0;margin-top:6px';dif.textContent='Diferença: +'+dinheiro(credito-precoBase)+' (cobre a taxa de '+TAXA_MAQUININHA+'% e arredonda pros 50 centavos mais próximos)';
-        card.appendChild(dif);
-      }
+      const linha2=document.createElement('div');linha2.style.cssText='display:flex;justify-content:space-between;gap:8px;font-size:12px;flex-wrap:wrap;margin-top:6px;padding-top:6px;border-top:1px solid #f0f0f2';
+      const credito=precoCredito(precoBase),debito=precoDebito(precoBase);
+      linha2.innerHTML='<span style="color:#9a9aa0">No crédito (cobrar)<br><b style="color:var(--verde);font-size:14px">'+dinheiro(credito)+'</b></span><span style="color:#9a9aa0;text-align:right">No débito (cobrar)<br><b style="color:var(--azul);font-size:14px">'+dinheiro(debito)+'</b></span>';
+      card.appendChild(linha2);
       body.appendChild(card);
     });
   }
   inpTaxa.oninput=()=>{TAXA_MAQUININHA=Number(inpTaxa.value)||0;salvarTaxaMaquininha();renderLista()};
+  inpTaxaDeb.oninput=()=>{TAXA_DEBITO=Number(inpTaxaDeb.value)||0;salvarTaxaDebito();renderLista()};
   inpBusca.oninput=renderLista;
   renderLista();
   document.body.appendChild(bg);
 }
+
 
 function saldoRotaCliente(clienteId){
   return VENDAS.filter(v=>v.pagamento==='rota'&&v.clienteId===clienteId&&!v.pago).reduce((s,v)=>s+(v.total-(v.valorPago||0)),0);
