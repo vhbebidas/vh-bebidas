@@ -2430,8 +2430,10 @@ function abrirRotaSemanal(){
 
       if(saldo>0){
         const saldoBox=document.createElement('div');saldoBox.style.cssText='background:var(--vermelhobg);color:var(--vermelho);border-radius:10px;padding:9px 10px;margin-bottom:10px';
-        const saldoTxt=document.createElement('div');saldoTxt.style.cssText='font-size:12.5px;font-weight:800;margin-bottom:7px';saldoTxt.textContent='💰 Deve da entrega passada: '+dinheiro(saldo);
+        const saldoTxt=document.createElement('div');saldoTxt.style.cssText='font-size:12.5px;font-weight:800;margin-bottom:4px';saldoTxt.textContent='💰 Deve da entrega passada: '+dinheiro(saldo);
         saldoBox.appendChild(saldoTxt);
+        const dicaDevolucao=document.createElement('div');dicaDevolucao.style.cssText='font-size:10.5px;font-weight:600;opacity:.85;margin-bottom:8px';dicaDevolucao.textContent='Ele devolveu alguma mercadoria que não vendeu? Ajusta em "🧾 Ver entregas anteriores" antes de confirmar — o valor e o estoque se ajustam sozinhos.';
+        saldoBox.appendChild(dicaDevolucao);
         const pagLinha=document.createElement('div');pagLinha.style.cssText='display:flex;gap:6px';
         const inpPagar=document.createElement('input');inpPagar.type='number';inpPagar.step='0.01';inpPagar.value=saldo.toFixed(2);inpPagar.style.cssText='flex:1;min-width:0;border:1px solid #f3c9c9;border-radius:8px;padding:7px 8px;font-size:12.5px;background:#fff';
         const btnConfirmarPag=document.createElement('button');btnConfirmarPag.textContent='✅ Confirmar recebimento';btnConfirmarPag.style.cssText='border:0;background:var(--verde);color:#fff;border-radius:8px;padding:7px 10px;font-weight:800;font-size:11.5px;cursor:pointer;flex:none';
@@ -2561,9 +2563,16 @@ function abrirRotaSemanal(){
             const d=document.createElement('div');d.style.cssText='border-top:1px solid #f4f4f6;padding:8px 0;font-size:12px';
             const status=v.pago?'✅ Pago':((v.valorPago||0)>0?'🟡 Parcial ('+dinheiro(v.valorPago)+' de '+dinheiro(v.total)+')':'🔴 Em aberto');
             d.innerHTML='<div style="display:flex;justify-content:space-between"><b>'+new Date(v.ts).toLocaleDateString('pt-BR')+'</b><b>'+dinheiro(v.total)+'</b></div><div style="color:#9a9aa0;font-size:11px">Nº'+v.numero+' · '+status+'</div>';
-            const btnVer=document.createElement('button');btnVer.textContent='🧾 Ver cupom';btnVer.style.cssText='margin-top:5px;border:0;border-radius:6px;padding:5px 8px;background:var(--creme2);color:#7a7264;font-weight:700;font-size:10.5px;cursor:pointer';
+            const btnsHist=document.createElement('div');btnsHist.style.cssText='display:flex;gap:6px;margin-top:5px;flex-wrap:wrap';
+            const btnVer=document.createElement('button');btnVer.textContent='🧾 Ver cupom';btnVer.style.cssText='border:0;border-radius:6px;padding:5px 8px;background:var(--creme2);color:#7a7264;font-weight:700;font-size:10.5px;cursor:pointer';
             btnVer.onclick=()=>{bg.remove();abrirCupom(v)};
-            d.appendChild(btnVer);
+            btnsHist.appendChild(btnVer);
+            if(!v.pago){
+              const btnAjustar=document.createElement('button');btnAjustar.textContent='↩️ Ajustar (registrar devolução)';btnAjustar.style.cssText='border:0;border-radius:6px;padding:5px 8px;background:var(--azulbg);color:var(--azul);font-weight:700;font-size:10.5px;cursor:pointer';
+              btnAjustar.onclick=()=>{bg.remove();editarItensVenda(v.id)};
+              btnsHist.appendChild(btnAjustar);
+            }
+            d.appendChild(btnsHist);
             histWrap.appendChild(d);
           });
           histWrap.style.display='block';
