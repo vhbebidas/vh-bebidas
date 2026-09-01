@@ -1199,6 +1199,29 @@ function abrirResumoPeriodo(){
         m.appendChild(l);
       });
     }
+    const titBusca=document.createElement('div');titBusca.style.cssText='font-size:12px;font-weight:800;text-transform:uppercase;color:#7a7264;margin:16px 0 8px;border-bottom:2px solid var(--amarelo);padding-bottom:4px';titBusca.textContent='🔍 Ver um produto específico';
+    m.appendChild(titBusca);
+    const inpBuscaProduto=document.createElement('input');inpBuscaProduto.className='campo';inpBuscaProduto.placeholder='Digita o nome do produto...';
+    m.appendChild(inpBuscaProduto);
+    const resultBusca=document.createElement('div');resultBusca.style.marginTop='8px';
+    m.appendChild(resultBusca);
+    inpBuscaProduto.oninput=()=>{
+      const termo=inpBuscaProduto.value.trim().toLowerCase();
+      resultBusca.innerHTML='';
+      if(!termo)return;
+      const encontrados=PRODUTOS.filter(p=>p.nome.toLowerCase().includes(termo));
+      if(!encontrados.length){
+        const p2=document.createElement('div');p2.style.cssText='font-size:12px;color:#9a9aa0;padding:8px 0';p2.textContent='Nenhum produto com esse nome cadastrado.';
+        resultBusca.appendChild(p2);return;
+      }
+      encontrados.forEach(p=>{
+        const item=porProduto[p.id];
+        const l=document.createElement('div');l.style.cssText='display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ece2cc;font-size:12.5px;gap:8px';
+        const detalhe=item?Object.entries(item.porModo).map(([modo,qtd])=>rotuloModo(p.id,modo,qtd)).join(' + '):'não vendeu no período';
+        l.innerHTML='<span>'+p.nome+'</span><b style="text-align:right;white-space:nowrap;color:'+(item?'#161412':'#9a9aa0')+'">'+detalhe+'</b>';
+        resultBusca.appendChild(l);
+      });
+    };
     const bsExport=document.createElement('div');bsExport.className='botoes';bsExport.style.marginTop='14px';
     bsExport.innerHTML='<button class="cancelar">📄 Planilha (CSV)</button><button class="confirmar">🖨️ PDF / Imprimir</button>';
     bsExport.firstChild.onclick=()=>exportarCSV(vendasPeriodo,'vendas_'+deISO+'_a_'+ateISO+'.csv');
