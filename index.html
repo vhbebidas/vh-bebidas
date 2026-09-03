@@ -144,6 +144,8 @@ let TAXA_MAQUININHA=load('taxa-maquininha-vh-v2',0);
 function salvarTaxaMaquininha(){save('taxa-maquininha-vh-v2',TAXA_MAQUININHA)}
 let TAXA_DEBITO=load('taxa-debito-vh-v2',0);
 function salvarTaxaDebito(){save('taxa-debito-vh-v2',TAXA_DEBITO)}
+let COPAO=load('copao-vh-v2',{copo500:0,copo700:0,canudo:0,geloSabor:0,energetico2L:0,whisky:{valor:0,ml:1000},gin:{valor:0,ml:750},vodka:{valor:0,ml:1000}});
+function salvarCopao(){save('copao-vh-v2',COPAO)}
 function precoCredito(preco){
   if(!preco||!TAXA_MAQUININHA)return preco;
   const bruto=preco/(1-TAXA_MAQUININHA/100);
@@ -153,6 +155,20 @@ function precoDebito(preco){
   if(!preco||!TAXA_DEBITO)return preco;
   const bruto=preco/(1-TAXA_DEBITO/100);
   return Math.round(bruto*2)/2;
+}
+function calcularCopao(tipo,tamanhoCopo){
+  const dest=COPAO[tipo];
+  if(!dest||!dest.valor||!dest.ml)return null;
+  const custoMlDestilado=dest.valor/dest.ml;
+  const doses=tamanhoCopo===500?2:3;
+  const mlDestilado=doses*45;
+  const mlEnergetico=tamanhoCopo-mlDestilado;
+  const custoDestilado=custoMlDestilado*mlDestilado;
+  const custoMlEnergetico=(COPAO.energetico2L||0)/2000;
+  const custoEnergetico=custoMlEnergetico*mlEnergetico;
+  const custoCopo=tamanhoCopo===500?(COPAO.copo500||0):(COPAO.copo700||0);
+  const custoTotal=custoDestilado+custoEnergetico+custoCopo+(COPAO.canudo||0)+(COPAO.geloSabor||0);
+  return{custoTotal,custoDestilado,custoEnergetico,custoCopo,mlDestilado,mlEnergetico,doses};
 }
 let ROTA=load('rota-semanal-vh-v2',{diaSemana:1,clientesIds:[]});
 function salvarRota(){save('rota-semanal-vh-v2',ROTA)}
@@ -1926,6 +1942,7 @@ function abrirMenu(){
     ['📈','Margem de lucro',abrirMargemLucro],
     ['🧮','Planejar compra (orçamento)',abrirPlanejadorCompras],
     ['💳','Calculadora crédito/débito (taxa da maquininha)',abrirCalculadoraCredito],
+    ['🥃','Copão (whisky/gin/vodka)',abrirCopao],
     ['🚚','Rota semanal (entrega/consignado)',abrirRotaSemanal],
     ['💵','Caixa'+(CAIXA.aberto?' (aberto)':' (fechado)'),abrirTelaCaixa],
     ['💰','Fiado (a receber)'+(pendFiado>0?' · '+pendFiado+' pendente'+(pendFiado>1?'s':''):''),abrirFiados],
@@ -2374,6 +2391,107 @@ function abrirCalculadoraCredito(){
   renderLista();
   document.body.appendChild(bg);
 }
+function abrirCopao(){
+  fecharModal();
+  const bg=document.createElement('div');bg.className='cotacao-bg';
+  const header=document.createElement('div');header.className='cotacao-header';
+  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">🥃 Copão (whisky/gin/vodka)</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Preenche os insumos e as garrafas — o app calcula o custo de cada copão e sugere o preço de venda certo.</p>';
+  const btnFechar=document.createElement('button');btnFechar.textContent='✕ Fechar';btnFechar.style.cssText='border:0;background:#f4f4f6;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;flex:none;min-height:40px';
+  btnFechar.onclick=()=>bg.remove();
+  header.append(tit,btnFechar);
+  bg.appendChild(header);
+  const body=document.createElement('div');body.className='cotacao-body';
+  bg.appendChild(body);
+
+  function campoInsumo(label,valor,onchange){
+    const wrap=document.createElement('div');wrap.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #f4f4f6';
+    const lbl=document.createElement('span');lbl.style.cssText='font-size:12px;color:#555;flex:1';lbl.textContent=label;
+    const inp=document.createElement('input');inp.type='number';inp.step='0.01';inp.value=valor||'';inp.placeholder='R$';inp.style.cssText='width:80px;border:1px solid #e4e4e7;border-radius:8px;padding:7px 8px;font-size:12.5px;background:#fafafa;text-align:right';
+    inp.oninput=()=>{onchange(Number(inp.value)||0);salvarCopao();atualizarResultados()};
+    wrap.append(lbl,inp);
+    return wrap;
+  }
+
+  const cardInsumos=document.createElement('div');cardInsumos.className='cotacao-card';
+  const titInsumos=document.createElement('div');titInsumos.style.cssText='font-weight:800;font-size:13.5px;margin-bottom:6px';titInsumos.textContent='⚙️ Insumos (preço unitário)';
+  cardInsumos.appendChild(titInsumos);
+  cardInsumos.appendChild(campoInsumo('🥤 Copo descartável 500ml',COPAO.copo500,v=>COPAO.copo500=v));
+  cardInsumos.appendChild(campoInsumo('🥤 Copo descartável 700ml',COPAO.copo700,v=>COPAO.copo700=v));
+  cardInsumos.appendChild(campoInsumo('🥢 Canudo',COPAO.canudo,v=>COPAO.canudo=v));
+  cardInsumos.appendChild(campoInsumo('🧊 Gelo de sabor / coco',COPAO.geloSabor,v=>COPAO.geloSabor=v));
+  cardInsumos.appendChild(campoInsumo('⚡ Energético 2L (garrafa cheia)',COPAO.energetico2L,v=>COPAO.energetico2L=v));
+  body.appendChild(cardInsumos);
+
+  const cardDestilados=document.createElement('div');cardDestilados.className='cotacao-card';
+  const titDest=document.createElement('div');titDest.style.cssText='font-weight:800;font-size:13.5px;margin-bottom:6px';titDest.textContent='🥃 Destilados (valor pago na garrafa e o tamanho dela)';
+  cardDestilados.appendChild(titDest);
+  [['whisky','Whisky'],['gin','Gin'],['vodka','Vodka']].forEach(([key,label])=>{
+    const linha=document.createElement('div');linha.style.cssText='padding:8px 0;border-bottom:1px solid #f4f4f6';
+    const lbl=document.createElement('div');lbl.style.cssText='font-size:12px;font-weight:700;color:#555;margin-bottom:5px';lbl.textContent=label;
+    linha.appendChild(lbl);
+    const camposLinha=document.createElement('div');camposLinha.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px';
+    const cValor=document.createElement('div');cValor.innerHTML='<label style="font-size:9.5px;color:#9a9aa0;font-weight:700;text-transform:uppercase">Valor pago (R$)</label>';
+    const inpValor=document.createElement('input');inpValor.type='number';inpValor.step='0.01';inpValor.value=COPAO[key].valor||'';inpValor.style.cssText='width:100%;padding:8px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fafafa';
+    inpValor.oninput=()=>{COPAO[key].valor=Number(inpValor.value)||0;salvarCopao();atualizarResultados()};
+    cValor.appendChild(inpValor);
+    const cMl=document.createElement('div');cMl.innerHTML='<label style="font-size:9.5px;color:#9a9aa0;font-weight:700;text-transform:uppercase">Tamanho (ml)</label>';
+    const inpMl=document.createElement('input');inpMl.type='number';inpMl.value=COPAO[key].ml||'';inpMl.style.cssText='width:100%;padding:8px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fafafa';
+    inpMl.oninput=()=>{COPAO[key].ml=Number(inpMl.value)||0;salvarCopao();atualizarResultados()};
+    cMl.appendChild(inpMl);
+    camposLinha.append(cValor,cMl);
+    linha.appendChild(camposLinha);
+    cardDestilados.appendChild(linha);
+  });
+  body.appendChild(cardDestilados);
+
+  const resultadosWrap=document.createElement('div');
+  body.appendChild(resultadosWrap);
+
+  const PRECOS_REDONDOS=[10,15,20,25,30,35];
+  function tabelaBebida(tipo,label,emoji){
+    const card=document.createElement('div');card.className='cotacao-card';
+    const tit=document.createElement('div');tit.style.cssText='font-weight:800;font-size:14px;margin-bottom:8px';tit.textContent=emoji+' '+label;
+    card.appendChild(tit);
+    [500,700].forEach(tamanho=>{
+      const r=calcularCopao(tipo,tamanho);
+      const bloco=document.createElement('div');bloco.style.cssText='margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #f0f0f2';
+      const subtit=document.createElement('div');subtit.style.cssText='font-size:12.5px;font-weight:800;margin-bottom:4px';subtit.textContent='Copão '+tamanho+'ml';
+      bloco.appendChild(subtit);
+      if(!r){
+        const aviso=document.createElement('div');aviso.style.cssText='font-size:11.5px;color:#9a9aa0';aviso.textContent='Preenche o valor e o tamanho da garrafa de '+label.toLowerCase()+' pra calcular.';
+        bloco.appendChild(aviso);
+        card.appendChild(bloco);
+        return;
+      }
+      const sub=document.createElement('div');sub.style.cssText='font-size:10.5px;color:#9a9aa0;margin-bottom:6px';
+      sub.textContent=r.doses+' doses (45ml cada) = '+r.mlDestilado+'ml de '+label.toLowerCase()+' + '+r.mlEnergetico+'ml de energético';
+      bloco.appendChild(sub);
+      const custoLinha=document.createElement('div');custoLinha.style.cssText='font-size:12.5px;font-weight:800;margin-bottom:8px';custoLinha.textContent='💰 Custo real: '+dinheiro(r.custoTotal);
+      bloco.appendChild(custoLinha);
+      const tabela=document.createElement('div');
+      PRECOS_REDONDOS.forEach(preco=>{
+        const lucro=preco-r.custoTotal;
+        const estrela=lucro>=r.custoTotal;
+        const linhaP=document.createElement('div');linhaP.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px';
+        const corLucro=lucro<0?'var(--vermelho)':(estrela?'var(--verde)':'#555');
+        linhaP.innerHTML='<span>'+(estrela?'⭐ ':'')+'R$ '+preco.toFixed(2).replace('.',',')+'</span><b style="color:'+corLucro+'">'+(lucro<0?'prejuízo de '+dinheiro(Math.abs(lucro)):'lucro de '+dinheiro(lucro))+'</b>';
+        tabela.appendChild(linhaP);
+      });
+      bloco.appendChild(tabela);
+      card.appendChild(bloco);
+    });
+    return card;
+  }
+  function atualizarResultados(){
+    resultadosWrap.innerHTML='';
+    resultadosWrap.appendChild(tabelaBebida('whisky','Whisky','🥃'));
+    resultadosWrap.appendChild(tabelaBebida('gin','Gin','🍸'));
+    resultadosWrap.appendChild(tabelaBebida('vodka','Vodka','🍹'));
+  }
+  atualizarResultados();
+  document.body.appendChild(bg);
+}
+
 
 
 function saldoRotaCliente(clienteId){
