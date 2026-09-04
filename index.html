@@ -144,7 +144,18 @@ let TAXA_MAQUININHA=load('taxa-maquininha-vh-v2',0);
 function salvarTaxaMaquininha(){save('taxa-maquininha-vh-v2',TAXA_MAQUININHA)}
 let TAXA_DEBITO=load('taxa-debito-vh-v2',0);
 function salvarTaxaDebito(){save('taxa-debito-vh-v2',TAXA_DEBITO)}
-let COPAO=load('copao-vh-v2',{copo500:0,copo700:0,canudo:0,geloSabor:0,energetico2L:0,whisky:{valor:0,ml:1000},gin:{valor:0,ml:750},vodka:{valor:0,ml:1000}});
+let COPAO=load('copao-vh-v2',{copo500:0,copo700:0,canudo:0,geloSabor:0,energetico2L:0,whisky:[],gin:[],vodka:[]});
+function migrarCopaoAntigo(){
+  let mudou=false;
+  ['whisky','gin','vodka'].forEach(tipo=>{
+    const v=COPAO[tipo];
+    if(v&&!Array.isArray(v)){
+      COPAO[tipo]=(v.valor||v.ml)?[{id:'d'+Date.now()+Math.random().toString(36).slice(2),nome:tipo==='whisky'?'Whisky':tipo==='gin'?'Gin':'Vodka',valor:v.valor||0,ml:v.ml||0}]:[];
+      mudou=true;
+    }
+  });
+  if(mudou)salvarCopao();
+}
 function salvarCopao(){save('copao-vh-v2',COPAO)}
 function precoCredito(preco){
   if(!preco||!TAXA_MAQUININHA)return preco;
@@ -156,10 +167,9 @@ function precoDebito(preco){
   const bruto=preco/(1-TAXA_DEBITO/100);
   return Math.round(bruto*2)/2;
 }
-function calcularCopao(tipo,tamanhoCopo){
-  const dest=COPAO[tipo];
-  if(!dest||!dest.valor||!dest.ml)return null;
-  const custoMlDestilado=dest.valor/dest.ml;
+function calcularCopao(item,tamanhoCopo){
+  if(!item||!item.valor||!item.ml)return null;
+  const custoMlDestilado=item.valor/item.ml;
   const doses=tamanhoCopo===500?2:3;
   const mlDestilado=doses*45;
   const mlEnergetico=tamanhoCopo-mlDestilado;
@@ -2393,9 +2403,10 @@ function abrirCalculadoraCredito(){
 }
 function abrirCopao(){
   fecharModal();
+  migrarCopaoAntigo();
   const bg=document.createElement('div');bg.className='cotacao-bg';
   const header=document.createElement('div');header.className='cotacao-header';
-  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">🥃 Copão (whisky/gin/vodka)</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Preenche os insumos e as garrafas — o app calcula o custo de cada copão e sugere o preço de venda certo.</p>';
+  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">🥃 Copão (whisky/gin/vodka)</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Cadastra cada marca separada, escolhe o preço de venda e vê a conta na hora.</p>';
   const btnFechar=document.createElement('button');btnFechar.textContent='✕ Fechar';btnFechar.style.cssText='border:0;background:#f4f4f6;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;flex:none;min-height:40px';
   btnFechar.onclick=()=>bg.remove();
   header.append(tit,btnFechar);
@@ -2407,7 +2418,7 @@ function abrirCopao(){
     const wrap=document.createElement('div');wrap.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #f4f4f6';
     const lbl=document.createElement('span');lbl.style.cssText='font-size:12px;color:#555;flex:1';lbl.textContent=label;
     const inp=document.createElement('input');inp.type='number';inp.step='0.01';inp.value=valor||'';inp.placeholder='R$';inp.style.cssText='width:80px;border:1px solid #e4e4e7;border-radius:8px;padding:7px 8px;font-size:12.5px;background:#fafafa;text-align:right';
-    inp.oninput=()=>{onchange(Number(inp.value)||0);salvarCopao();atualizarResultados()};
+    inp.oninput=()=>{onchange(Number(inp.value)||0);salvarCopao();atualizarTodasMarcas()};
     wrap.append(lbl,inp);
     return wrap;
   }
@@ -2422,75 +2433,109 @@ function abrirCopao(){
   cardInsumos.appendChild(campoInsumo('⚡ Energético 2L (garrafa cheia)',COPAO.energetico2L,v=>COPAO.energetico2L=v));
   body.appendChild(cardInsumos);
 
-  const cardDestilados=document.createElement('div');cardDestilados.className='cotacao-card';
-  const titDest=document.createElement('div');titDest.style.cssText='font-weight:800;font-size:13.5px;margin-bottom:6px';titDest.textContent='🥃 Destilados (valor pago na garrafa e o tamanho dela)';
-  cardDestilados.appendChild(titDest);
-  [['whisky','Whisky'],['gin','Gin'],['vodka','Vodka']].forEach(([key,label])=>{
-    const linha=document.createElement('div');linha.style.cssText='padding:8px 0;border-bottom:1px solid #f4f4f6';
-    const lbl=document.createElement('div');lbl.style.cssText='font-size:12px;font-weight:700;color:#555;margin-bottom:5px';lbl.textContent=label;
-    linha.appendChild(lbl);
-    const camposLinha=document.createElement('div');camposLinha.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px';
-    const cValor=document.createElement('div');cValor.innerHTML='<label style="font-size:9.5px;color:#9a9aa0;font-weight:700;text-transform:uppercase">Valor pago (R$)</label>';
-    const inpValor=document.createElement('input');inpValor.type='number';inpValor.step='0.01';inpValor.value=COPAO[key].valor||'';inpValor.style.cssText='width:100%;padding:8px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fafafa';
-    inpValor.oninput=()=>{COPAO[key].valor=Number(inpValor.value)||0;salvarCopao();atualizarResultados()};
-    cValor.appendChild(inpValor);
-    const cMl=document.createElement('div');cMl.innerHTML='<label style="font-size:9.5px;color:#9a9aa0;font-weight:700;text-transform:uppercase">Tamanho (ml)</label>';
-    const inpMl=document.createElement('input');inpMl.type='number';inpMl.value=COPAO[key].ml||'';inpMl.style.cssText='width:100%;padding:8px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fafafa';
-    inpMl.oninput=()=>{COPAO[key].ml=Number(inpMl.value)||0;salvarCopao();atualizarResultados()};
-    cMl.appendChild(inpMl);
-    camposLinha.append(cValor,cMl);
-    linha.appendChild(camposLinha);
-    cardDestilados.appendChild(linha);
-  });
-  body.appendChild(cardDestilados);
-
-  const resultadosWrap=document.createElement('div');
-  body.appendChild(resultadosWrap);
-
   const PRECOS_REDONDOS=[10,15,20,25,30,35];
-  function tabelaBebida(tipo,label,emoji){
-    const card=document.createElement('div');card.className='cotacao-card';
-    const tit=document.createElement('div');tit.style.cssText='font-weight:800;font-size:14px;margin-bottom:8px';tit.textContent=emoji+' '+label;
-    card.appendChild(tit);
-    [500,700].forEach(tamanho=>{
-      const r=calcularCopao(tipo,tamanho);
-      const bloco=document.createElement('div');bloco.style.cssText='margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #f0f0f2';
-      const subtit=document.createElement('div');subtit.style.cssText='font-size:12.5px;font-weight:800;margin-bottom:4px';subtit.textContent='Copão '+tamanho+'ml';
-      bloco.appendChild(subtit);
+
+  function montarBlocoTamanho(item,tamanho){
+    const bloco=document.createElement('div');bloco.style.cssText='margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f2';
+    const subtit=document.createElement('div');subtit.style.cssText='font-size:12.5px;font-weight:800;margin-bottom:4px';subtit.textContent='Copão '+tamanho+'ml';
+    bloco.appendChild(subtit);
+    const subInfo=document.createElement('div');subInfo.style.cssText='font-size:10.5px;color:#9a9aa0;margin-bottom:5px';
+    bloco.appendChild(subInfo);
+    const custoLinha=document.createElement('div');custoLinha.style.cssText='font-size:12.5px;font-weight:800;margin-bottom:8px';
+    bloco.appendChild(custoLinha);
+    const selPreco=document.createElement('select');selPreco.style.cssText='width:100%;padding:9px;border:1px solid #e4e4e7;border-radius:8px;font-size:12.5px;background:#fafafa;margin-bottom:6px';
+    bloco.appendChild(selPreco);
+    const resultado=document.createElement('div');resultado.style.cssText='font-size:13px;font-weight:800;text-align:center;padding:8px;border-radius:8px';
+    bloco.appendChild(resultado);
+    function redesenhar(){
+      const r=calcularCopao(item,tamanho);
       if(!r){
-        const aviso=document.createElement('div');aviso.style.cssText='font-size:11.5px;color:#9a9aa0';aviso.textContent='Preenche o valor e o tamanho da garrafa de '+label.toLowerCase()+' pra calcular.';
-        bloco.appendChild(aviso);
-        card.appendChild(bloco);
+        subInfo.textContent='';
+        custoLinha.textContent='';
+        selPreco.style.display='none';
+        resultado.style.cssText='font-size:11.5px;color:#9a9aa0;text-align:left;padding:0';
+        resultado.textContent='Preenche o valor e o tamanho da garrafa pra calcular.';
         return;
       }
-      const sub=document.createElement('div');sub.style.cssText='font-size:10.5px;color:#9a9aa0;margin-bottom:6px';
-      sub.textContent=r.doses+' doses (45ml cada) = '+r.mlDestilado+'ml de '+label.toLowerCase()+' + '+r.mlEnergetico+'ml de energético';
-      bloco.appendChild(sub);
-      const custoLinha=document.createElement('div');custoLinha.style.cssText='font-size:12.5px;font-weight:800;margin-bottom:8px';custoLinha.textContent='💰 Custo real: '+dinheiro(r.custoTotal);
-      bloco.appendChild(custoLinha);
-      const tabela=document.createElement('div');
-      PRECOS_REDONDOS.forEach(preco=>{
-        const lucro=preco-r.custoTotal;
-        const estrela=lucro>=r.custoTotal;
-        const linhaP=document.createElement('div');linhaP.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px';
-        const corLucro=lucro<0?'var(--vermelho)':(estrela?'var(--verde)':'#555');
-        linhaP.innerHTML='<span>'+(estrela?'⭐ ':'')+'R$ '+preco.toFixed(2).replace('.',',')+'</span><b style="color:'+corLucro+'">'+(lucro<0?'prejuízo de '+dinheiro(Math.abs(lucro)):'lucro de '+dinheiro(lucro))+'</b>';
-        tabela.appendChild(linhaP);
-      });
-      bloco.appendChild(tabela);
-      card.appendChild(bloco);
-    });
+      selPreco.style.display='';
+      subInfo.textContent=r.doses+' doses (45ml cada) = '+r.mlDestilado+'ml de destilado + '+r.mlEnergetico+'ml de energético';
+      custoLinha.textContent='💰 Custo real: '+dinheiro(r.custoTotal);
+      const valorSelecionado=selPreco.value;
+      selPreco.innerHTML='<option value="">Escolher preço de venda...</option>'+PRECOS_REDONDOS.map(preco=>{
+        const estrela=(preco-r.custoTotal)>=r.custoTotal;
+        return'<option value="'+preco+'">'+(estrela?'⭐ ':'')+'R$ '+preco.toFixed(2).replace('.',',')+'</option>';
+      }).join('');
+      if(valorSelecionado)selPreco.value=valorSelecionado;
+      atualizarResultadoPreco(r);
+    }
+    function atualizarResultadoPreco(r){
+      if(!selPreco.value){
+        resultado.style.cssText='font-size:11.5px;color:#9a9aa0;text-align:center;padding:8px';
+        resultado.textContent='Escolhe um preço aí em cima pra ver se vale a pena.';
+        return;
+      }
+      const preco=Number(selPreco.value),lucro=preco-r.custoTotal,estrela=lucro>=r.custoTotal;
+      resultado.style.cssText='font-size:13.5px;font-weight:800;text-align:center;padding:9px;border-radius:9px;background:'+(lucro<0?'var(--vermelhobg)':(estrela?'var(--verdebg)':'#fff4e0'))+';color:'+(lucro<0?'var(--vermelho)':(estrela?'var(--verde)':'#c9740f'));
+      resultado.textContent=(lucro<0?'❌ Prejuízo de ':(estrela?'⭐ Lucro de ':'✅ Lucro de '))+dinheiro(Math.abs(lucro));
+    }
+    selPreco.onchange=()=>{const r=calcularCopao(item,tamanho);atualizarResultadoPreco(r)};
+    redesenhar();
+    return{bloco,redesenhar};
+  }
+
+  function montarCardMarca(tipo,item,atualizadores){
+    const card=document.createElement('div');card.className='cotacao-card';
+    const linhaNome=document.createElement('div');linhaNome.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px';
+    const inpNome=document.createElement('input');inpNome.value=item.nome||'';inpNome.placeholder='Nome da marca';inpNome.style.cssText='flex:1;padding:9px;border:1px solid #e4e4e7;border-radius:8px;font-size:13.5px;font-weight:800;background:#fafafa';
+    inpNome.oninput=()=>{item.nome=inpNome.value;salvarCopao()};
+    const btnDel=document.createElement('button');btnDel.textContent='🗑️';btnDel.style.cssText='border:0;background:none;color:var(--vermelho);font-size:15px;cursor:pointer;flex:none;padding:4px 6px';
+    btnDel.onclick=()=>{if(!confirm('Remover "'+(item.nome||'essa marca')+'"?'))return;COPAO[tipo]=COPAO[tipo].filter(x=>x.id!==item.id);salvarCopao();montarListaTipo(tipo)};
+    linhaNome.append(inpNome,btnDel);
+    card.appendChild(linhaNome);
+    const camposLinha=document.createElement('div');camposLinha.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px';
+    const cValor=document.createElement('div');cValor.innerHTML='<label style="font-size:9.5px;color:#9a9aa0;font-weight:700;text-transform:uppercase">Valor pago (R$)</label>';
+    const inpValor=document.createElement('input');inpValor.type='number';inpValor.step='0.01';inpValor.value=item.valor||'';inpValor.style.cssText='width:100%;padding:8px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fafafa';
+    cValor.appendChild(inpValor);
+    const cMl=document.createElement('div');cMl.innerHTML='<label style="font-size:9.5px;color:#9a9aa0;font-weight:700;text-transform:uppercase">Tamanho (ml)</label>';
+    const inpMl=document.createElement('input');inpMl.type='number';inpMl.value=item.ml||'';inpMl.style.cssText='width:100%;padding:8px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fafafa';
+    cMl.appendChild(inpMl);
+    camposLinha.append(cValor,cMl);
+    card.appendChild(camposLinha);
+    const bloco500=montarBlocoTamanho(item,500),bloco700=montarBlocoTamanho(item,700);
+    card.append(bloco500.bloco,bloco700.bloco);
+    function redesenharTudo(){bloco500.redesenhar();bloco700.redesenhar()}
+    inpValor.oninput=()=>{item.valor=Number(inpValor.value)||0;salvarCopao();redesenharTudo()};
+    inpMl.oninput=()=>{item.ml=Number(inpMl.value)||0;salvarCopao();redesenharTudo()};
+    atualizadores.push(redesenharTudo);
     return card;
   }
-  function atualizarResultados(){
-    resultadosWrap.innerHTML='';
-    resultadosWrap.appendChild(tabelaBebida('whisky','Whisky','🥃'));
-    resultadosWrap.appendChild(tabelaBebida('gin','Gin','🍸'));
-    resultadosWrap.appendChild(tabelaBebida('vodka','Vodka','🍹'));
+
+  const secoes={};
+  function montarListaTipo(tipo){
+    secoes[tipo].lista.innerHTML='';
+    secoes[tipo].atualizadores.length=0;
+    COPAO[tipo].forEach(item=>secoes[tipo].lista.appendChild(montarCardMarca(tipo,item,secoes[tipo].atualizadores)));
   }
-  atualizarResultados();
+
+  [['whisky','🥃 Whisky'],['gin','🍸 Gin'],['vodka','🍹 Vodka']].forEach(([tipo,label])=>{
+    const tit=document.createElement('div');tit.style.cssText='font-size:12px;font-weight:800;text-transform:uppercase;color:#7a7264;margin:16px 0 8px;border-bottom:2px solid var(--amarelo);padding-bottom:4px';tit.textContent=label;
+    body.appendChild(tit);
+    const lista=document.createElement('div');
+    body.appendChild(lista);
+    secoes[tipo]={lista,atualizadores:[]};
+    const btnAdd=document.createElement('button');btnAdd.textContent='+ Adicionar marca de '+label.replace(/^\S+\s/,'');btnAdd.style.cssText='width:100%;border:1px solid #d8cfb8;background:#fff;color:#7a7264;border-radius:9px;padding:10px;font-weight:700;font-size:12.5px;cursor:pointer;margin-bottom:6px';
+    btnAdd.onclick=()=>{
+      COPAO[tipo].push({id:'d'+Date.now()+Math.random().toString(36).slice(2),nome:'',valor:0,ml:tipo==='gin'?750:1000});
+      salvarCopao();montarListaTipo(tipo);
+    };
+    body.appendChild(btnAdd);
+    montarListaTipo(tipo);
+  });
+
+  function atualizarTodasMarcas(){Object.values(secoes).forEach(s=>s.atualizadores.forEach(fn=>fn()))}
   document.body.appendChild(bg);
 }
+
 
 
 
