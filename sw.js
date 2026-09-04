@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vh-bebidas-shell-v8';
+const CACHE_NAME = 'vh-bebidas-shell-v9';
 const APP_SHELL = ['./', './index.html'];
 
 self.addEventListener('install', (event) => {
