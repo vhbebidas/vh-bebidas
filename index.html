@@ -144,7 +144,12 @@ let TAXA_MAQUININHA=load('taxa-maquininha-vh-v2',0);
 function salvarTaxaMaquininha(){save('taxa-maquininha-vh-v2',TAXA_MAQUININHA)}
 let TAXA_DEBITO=load('taxa-debito-vh-v2',0);
 function salvarTaxaDebito(){save('taxa-debito-vh-v2',TAXA_DEBITO)}
-let COPAO=load('copao-vh-v2',{copo500:0,copo700:0,canudo:0,geloSabor:0,energetico2L:0,margemCombo:25,whisky:[],gin:[],vodka:[]});
+let COPAO=load('copao-vh-v2',{copo500:0,copo700:0,canudo:0,geloSabor:0,energetico2L:0,whisky:[],gin:[],vodka:[]});
+let DESPESAS=load('despesas-vh-v2',[]);
+function salvarDespesas(){save('despesas-vh-v2',DESPESAS)}
+let DESPESAS_FIXAS=load('despesas-fixas-vh-v2',[]);
+function salvarDespesasFixas(){save('despesas-fixas-vh-v2',DESPESAS_FIXAS)}
+function despesasNoPeriodo(deISO,ateISO){return DESPESAS.filter(d=>d.data>=deISO&&d.data<=ateISO).reduce((s,d)=>s+d.valor,0)}
 function migrarCopaoAntigo(){
   let mudou=false;
   ['whisky','gin','vodka'].forEach(tipo=>{
@@ -222,6 +227,23 @@ function calcularFaltaCompra(p,e){
   return {falta,alvo,tipo,lote};
 }
 function disponivel(p,e){return p.cigarro?e.cigarros:(p.unidadeOnly||!e.pacote?e.qtd:e.qtd*e.pacote+e.resto)}
+function custoPorUnidadeBase(p,e){
+  const custo=Number(e.custoUltimaCompra)||0;
+  if(!custo)return 0;
+  if(p.cigarro)return custo/200;
+  if(p.unidadeOnly||!e.pacote)return custo;
+  return custo/e.pacote;
+}
+function custoItemVenda(i){
+  if(i.isCombo){
+    return(i.componentes||[]).reduce((s,comp)=>{
+      const p=PRODUTOS.find(x=>x.id===comp.produtoId);if(!p)return s;
+      return s+custoPorUnidadeBase(p,estado(p))*comp.qtd*i.qtd;
+    },0);
+  }
+  const p=PRODUTOS.find(x=>x.id===i.produtoId);if(!p)return 0;
+  return custoPorUnidadeBase(p,estado(p))*(i.fator||1)*i.qtd;
+}
 function calcularMargens(p,e){
   const custo=Number(e.custoUltimaCompra)||0;
   function m(preco,custoBase,label){
@@ -1192,6 +1214,24 @@ function abrirResumoPeriodo(){
     const box=document.createElement('div');box.className='totalbox';
     box.innerHTML='<small>TOTAL NO PERÍODO</small><br><b>'+dinheiro(totalPeriodo)+'</b><div style="font-size:11px;margin-top:4px;color:#bdb6a4">'+vendasPeriodo.length+' venda'+(vendasPeriodo.length!==1?'s':'')+'</div>';
     m.appendChild(box);
+    let cmv=0,semCusto=0;
+    vendasPeriodo.forEach(v=>v.itens.forEach(i=>{
+      const c=custoItemVenda(i);
+      if(c>0)cmv+=c;else semCusto++;
+    }));
+    const lucroBruto=totalPeriodo-cmv;
+    const margemPct=totalPeriodo>0?(lucroBruto/totalPeriodo*100):0;
+    const boxLucro=document.createElement('div');boxLucro.className='totalbox';boxLucro.style.cssText='background:var(--verdebg);color:var(--verde);margin-top:8px';
+    boxLucro.innerHTML='<small style="opacity:.8">LUCRO BRUTO NO PERÍODO</small><br><b>'+dinheiro(lucroBruto)+'</b><div style="font-size:11px;margin-top:4px;opacity:.85">Faturamento '+dinheiro(totalPeriodo)+' · CMV '+dinheiro(cmv)+' · Margem '+margemPct.toFixed(1)+'%</div>'+(semCusto>0?'<div style="font-size:10px;margin-top:3px;opacity:.7">'+semCusto+' item(ns) vendido(s) sem custo cadastrado — não entraram no CMV, então o lucro real pode ser um pouco menor</div>':'');
+    m.appendChild(boxLucro);
+    const despesasPeriodo=despesasNoPeriodo(deISO,ateISO);
+    const lucroLiquido=lucroBruto-despesasPeriodo;
+    const boxLiquido=document.createElement('div');boxLiquido.className='totalbox';boxLiquido.style.cssText='background:'+(lucroLiquido<0?'var(--vermelhobg)':'#111')+';color:'+(lucroLiquido<0?'var(--vermelho)':'#fff')+';margin-top:8px';
+    boxLiquido.innerHTML='<small style="opacity:.8">LUCRO LÍQUIDO NO PERÍODO</small><br><b>'+dinheiro(lucroLiquido)+'</b><div style="font-size:11px;margin-top:4px;opacity:.8">Lucro bruto '+dinheiro(lucroBruto)+' · Despesas '+dinheiro(despesasPeriodo)+'</div>';
+    const btnDespesas=document.createElement('button');btnDespesas.textContent='💸 Ver/lançar despesas';btnDespesas.style.cssText='margin-top:8px;border:0;background:rgba(255,255,255,.15);color:inherit;border-radius:8px;padding:8px 12px;font-weight:800;font-size:11.5px;cursor:pointer';
+    btnDespesas.onclick=()=>abrirDespesas();
+    boxLiquido.appendChild(btnDespesas);
+    m.appendChild(boxLiquido);
     m.appendChild(barrasPorDia(vendasPeriodo,diasArray));
     const porProduto={};
     vendasPeriodo.forEach(v=>v.itens.forEach(i=>{
@@ -1953,7 +1993,7 @@ function abrirMenu(){
     ['🧮','Planejar compra (orçamento)',abrirPlanejadorCompras],
     ['💳','Calculadora crédito/débito (taxa da maquininha)',abrirCalculadoraCredito],
     ['🥃','Copão (whisky/gin/vodka)',abrirCopao],
-    ['🍾','Combos com garrafa (destilado+energético+gelo)',abrirCombosGarrafa],
+    ['💸','Despesas (fixas e avulsas)',abrirDespesas],
     ['🚚','Rota semanal (entrega/consignado)',abrirRotaSemanal],
     ['💵','Caixa'+(CAIXA.aberto?' (aberto)':' (fechado)'),abrirTelaCaixa],
     ['💰','Fiado (a receber)'+(pendFiado>0?' · '+pendFiado+' pendente'+(pendFiado>1?'s':''):''),abrirFiados],
@@ -2415,10 +2455,6 @@ function abrirCopao(){
   const body=document.createElement('div');body.className='cotacao-body';
   bg.appendChild(body);
 
-  const btnTabela=document.createElement('button');btnTabela.textContent='📋 Ver tabela de preços dos copões';btnTabela.style.cssText='width:100%;border:0;background:#111;color:#fff;border-radius:12px;padding:12px;font-weight:800;font-size:13px;cursor:pointer;margin-bottom:12px';
-  btnTabela.onclick=abrirTabelaCopao;
-  body.appendChild(btnTabela);
-
   function campoInsumo(label,valor,onchange){
     const wrap=document.createElement('div');wrap.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #f4f4f6';
     const lbl=document.createElement('span');lbl.style.cssText='font-size:12px;color:#555;flex:1';lbl.textContent=label;
@@ -2452,7 +2488,6 @@ function abrirCopao(){
     bloco.appendChild(selPreco);
     const resultado=document.createElement('div');resultado.style.cssText='font-size:13px;font-weight:800;text-align:center;padding:8px;border-radius:8px';
     bloco.appendChild(resultado);
-    const chavePreco='preco'+tamanho;
     function redesenhar(){
       const r=calcularCopao(item,tamanho);
       if(!r){
@@ -2466,11 +2501,12 @@ function abrirCopao(){
       selPreco.style.display='';
       subInfo.textContent=r.doses+' doses (45ml cada) = '+r.mlDestilado+'ml de destilado + '+r.mlEnergetico+'ml de energético';
       custoLinha.textContent='💰 Custo real: '+dinheiro(r.custoTotal);
+      const valorSelecionado=selPreco.value;
       selPreco.innerHTML='<option value="">Escolher preço de venda...</option>'+PRECOS_REDONDOS.map(preco=>{
         const estrela=(preco-r.custoTotal)>=r.custoTotal;
         return'<option value="'+preco+'">'+(estrela?'⭐ ':'')+'R$ '+preco.toFixed(2).replace('.',',')+'</option>';
       }).join('');
-      if(item[chavePreco])selPreco.value=String(item[chavePreco]);
+      if(valorSelecionado)selPreco.value=valorSelecionado;
       atualizarResultadoPreco(r);
     }
     function atualizarResultadoPreco(r){
@@ -2483,13 +2519,7 @@ function abrirCopao(){
       resultado.style.cssText='font-size:13.5px;font-weight:800;text-align:center;padding:9px;border-radius:9px;background:'+(lucro<0?'var(--vermelhobg)':(estrela?'var(--verdebg)':'#fff4e0'))+';color:'+(lucro<0?'var(--vermelho)':(estrela?'var(--verde)':'#c9740f'));
       resultado.textContent=(lucro<0?'❌ Prejuízo de ':(estrela?'⭐ Lucro de ':'✅ Lucro de '))+dinheiro(Math.abs(lucro));
     }
-    selPreco.onchange=()=>{
-      item[chavePreco]=Number(selPreco.value)||0;
-      salvarCopao();
-      const r=calcularCopao(item,tamanho);
-      atualizarResultadoPreco(r);
-      atualizarTabelaCopaoSeAberta();
-    };
+    selPreco.onchange=()=>{const r=calcularCopao(item,tamanho);atualizarResultadoPreco(r)};
     redesenhar();
     return{bloco,redesenhar};
   }
@@ -2498,9 +2528,9 @@ function abrirCopao(){
     const card=document.createElement('div');card.className='cotacao-card';
     const linhaNome=document.createElement('div');linhaNome.style.cssText='display:flex;gap:8px;align-items:center;margin-bottom:8px';
     const inpNome=document.createElement('input');inpNome.value=item.nome||'';inpNome.placeholder='Nome da marca';inpNome.style.cssText='flex:1;padding:9px;border:1px solid #e4e4e7;border-radius:8px;font-size:13.5px;font-weight:800;background:#fafafa';
-    inpNome.oninput=()=>{item.nome=inpNome.value;salvarCopao();atualizarTabelaCopaoSeAberta()};
+    inpNome.oninput=()=>{item.nome=inpNome.value;salvarCopao()};
     const btnDel=document.createElement('button');btnDel.textContent='🗑️';btnDel.style.cssText='border:0;background:none;color:var(--vermelho);font-size:15px;cursor:pointer;flex:none;padding:4px 6px';
-    btnDel.onclick=()=>{if(!confirm('Remover "'+(item.nome||'essa marca')+'"?'))return;COPAO[tipo]=COPAO[tipo].filter(x=>x.id!==item.id);salvarCopao();montarListaTipo(tipo);atualizarTabelaCopaoSeAberta()};
+    btnDel.onclick=()=>{if(!confirm('Remover "'+(item.nome||'essa marca')+'"?'))return;COPAO[tipo]=COPAO[tipo].filter(x=>x.id!==item.id);salvarCopao();montarListaTipo(tipo)};
     linhaNome.append(inpNome,btnDel);
     card.appendChild(linhaNome);
     const camposLinha=document.createElement('div');camposLinha.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px';
@@ -2515,8 +2545,8 @@ function abrirCopao(){
     const bloco500=montarBlocoTamanho(item,500),bloco700=montarBlocoTamanho(item,700);
     card.append(bloco500.bloco,bloco700.bloco);
     function redesenharTudo(){bloco500.redesenhar();bloco700.redesenhar()}
-    inpValor.oninput=()=>{item.valor=Number(inpValor.value)||0;salvarCopao();redesenharTudo();atualizarTabelaCopaoSeAberta()};
-    inpMl.oninput=()=>{item.ml=Number(inpMl.value)||0;salvarCopao();redesenharTudo();atualizarTabelaCopaoSeAberta()};
+    inpValor.oninput=()=>{item.valor=Number(inpValor.value)||0;salvarCopao();redesenharTudo()};
+    inpMl.oninput=()=>{item.ml=Number(inpMl.value)||0;salvarCopao();redesenharTudo()};
     atualizadores.push(redesenharTudo);
     return card;
   }
@@ -2537,7 +2567,7 @@ function abrirCopao(){
     const btnAdd=document.createElement('button');btnAdd.textContent='+ Adicionar marca de '+label.replace(/^\S+\s/,'');btnAdd.style.cssText='width:100%;border:1px solid #d8cfb8;background:#fff;color:#7a7264;border-radius:9px;padding:10px;font-weight:700;font-size:12.5px;cursor:pointer;margin-bottom:6px';
     btnAdd.onclick=()=>{
       COPAO[tipo].push({id:'d'+Date.now()+Math.random().toString(36).slice(2),nome:'',valor:0,ml:tipo==='gin'?750:1000});
-      salvarCopao();montarListaTipo(tipo);atualizarTabelaCopaoSeAberta();
+      salvarCopao();montarListaTipo(tipo);
     };
     body.appendChild(btnAdd);
     montarListaTipo(tipo);
@@ -2546,125 +2576,145 @@ function abrirCopao(){
   function atualizarTodasMarcas(){Object.values(secoes).forEach(s=>s.atualizadores.forEach(fn=>fn()))}
   document.body.appendChild(bg);
 }
+function abrirDespesas(){
+  fecharModal();
+  const CATEGORIAS_DESPESA=['Aluguel','Funcionário','Água/Luz','Internet','Manutenção','Transporte','Fixa','Outros'];
+  let modo='mes',dataDe=isoDia(new Date()),dataAte=isoDia(new Date());
+  function calcularRange(){
+    const h=new Date();let de,ate=new Date(h);
+    if(modo==='7d'){de=new Date(h);de.setDate(de.getDate()-6)}
+    else if(modo==='30d'){de=new Date(h);de.setDate(de.getDate()-29)}
+    else if(modo==='mes'){de=new Date(h.getFullYear(),h.getMonth(),1)}
+    else{de=new Date(dataDe+'T00:00:00');ate=new Date(dataAte+'T00:00:00')}
+    return{de,ate};
+  }
+  const bg=document.createElement('div');bg.className='cotacao-bg';
+  const header=document.createElement('div');header.className='cotacao-header';
+  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">💸 Despesas</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Lança aluguel, funcionário, contas e outras despesas pra fechar o Lucro Líquido certinho.</p>';
+  const btnFechar=document.createElement('button');btnFechar.textContent='✕ Fechar';btnFechar.style.cssText='border:0;background:#f4f4f6;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;flex:none;min-height:40px';
+  btnFechar.onclick=()=>bg.remove();
+  header.append(tit,btnFechar);
+  bg.appendChild(header);
+  const body=document.createElement('div');body.className='cotacao-body';
+  bg.appendChild(body);
 
-let _tabelaCopaoAtualizar=null;
-function atualizarTabelaCopaoSeAberta(){if(_tabelaCopaoAtualizar)_tabelaCopaoAtualizar()}
+  const titFixas=document.createElement('div');titFixas.style.cssText='font-size:12px;font-weight:800;text-transform:uppercase;color:#7a7264;margin:6px 0 8px;border-bottom:2px solid var(--amarelo);padding-bottom:4px';titFixas.textContent='📌 Despesas fixas (recorrentes)';
+  body.appendChild(titFixas);
+  const listaFixas=document.createElement('div');
+  body.appendChild(listaFixas);
+  const btnAddFixa=document.createElement('button');btnAddFixa.textContent='+ Adicionar despesa fixa';btnAddFixa.style.cssText='width:100%;border:1px solid #d8cfb8;background:#fff;color:#7a7264;border-radius:9px;padding:10px;font-weight:700;font-size:12.5px;cursor:pointer;margin-bottom:6px';
+  btnAddFixa.onclick=()=>{DESPESAS_FIXAS.push({id:'f'+Date.now()+Math.random().toString(36).slice(2),nome:'',valor:0});salvarDespesasFixas();montarFixas()};
+  body.appendChild(btnAddFixa);
 
-function calcularCombo(item){
-  if(!item||!item.valor||!item.ml)return null;
-  const custoEnergetico=COPAO.energetico2L||0;
-  const custoGelos=(COPAO.geloSabor||0)*3;
-  const custoTotal=item.valor+custoEnergetico+custoGelos;
-  const margem=(COPAO.margemCombo!=null?COPAO.margemCombo:25);
-  const bruto=custoTotal*(1+margem/100);
-  const sugestao=Math.ceil(bruto/5)*5;
-  return{custoTotal,custoDestilado:item.valor,custoEnergetico,custoGelos,sugestao};
-}
-
-function abrirCombosGarrafa(){
-  const m=baseModal('🍾 Combos com garrafa','Garrafa do destilado + garrafa de energético + 3 gelo de sabor, sem copo. Sugestão de preço com base no que você paga.');
-  const cardMargem=document.createElement('div');cardMargem.style.cssText='background:#fff;border-radius:12px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #eee';
-  cardMargem.innerHTML='<span style="font-size:13px;font-weight:700">📈 Margem alvo do combo</span>';
-  const inpMargem=document.createElement('input');inpMargem.type='number';inpMargem.value=COPAO.margemCombo!=null?COPAO.margemCombo:25;inpMargem.style.cssText='width:70px;border:1px solid #e4e4e7;border-radius:8px;padding:8px;font-size:13px;text-align:center';
-  const wrapMargem=document.createElement('div');wrapMargem.style.cssText='display:flex;align-items:center;gap:4px';
-  wrapMargem.appendChild(inpMargem);
-  const spanPct=document.createElement('span');spanPct.textContent='%';spanPct.style.cssText='font-size:13px;color:#756c5e';
-  wrapMargem.appendChild(spanPct);
-  cardMargem.appendChild(wrapMargem);
-  m.appendChild(cardMargem);
-
-  const avisoInsumos=document.createElement('p');avisoInsumos.style.cssText='font-size:11.5px;color:#9a9aa0;margin:-4px 0 12px';
-  function textoInsumos(){return'⚡ Energético (garrafa cheia): '+dinheiro(COPAO.energetico2L||0)+'  ·  🧊 Gelo de sabor (unidade): '+dinheiro(COPAO.geloSabor||0)+'  → editável em Copão'}
-  avisoInsumos.textContent=textoInsumos();
-  m.appendChild(avisoInsumos);
-
-  const lista=document.createElement('div');
-  m.appendChild(lista);
-
-  function renderLista(){
-    lista.innerHTML='';
-    let temItem=false;
-    ['whisky','gin','vodka'].forEach(tipo=>{
-      const rotulo=tipo==='whisky'?'🥃 Whisky':tipo==='gin'?'🍸 Gin':'🍹 Vodka';
-      const itensTipo=(COPAO[tipo]||[]).filter(it=>it.nome&&it.valor&&it.ml);
-      if(!itensTipo.length)return;
-      temItem=true;
-      const tit=document.createElement('div');tit.textContent=rotulo;tit.style.cssText='font-size:12px;font-weight:800;color:#9a9aa0;text-transform:uppercase;margin:14px 0 6px';
-      lista.appendChild(tit);
-      itensTipo.forEach(item=>{
-        const c=calcularCombo(item);
-        if(!c)return;
-        const card=document.createElement('div');card.style.cssText='background:#fff;border:1px solid #eee;border-radius:12px;padding:12px 14px;margin-bottom:10px';
-        card.innerHTML='<div style="font-weight:800;font-size:14.5px;margin-bottom:6px">'+item.nome+'</div>'+
-          '<div style="font-size:11.5px;color:#9a9aa0;margin-bottom:6px">1 garrafa '+item.nome+' + 1 garrafa energético + 3 gelo de sabor</div>'+
-          '<div style="font-size:12px;color:#756c5e;margin-bottom:8px">💰 Custo real: '+dinheiro(c.custoTotal)+' <span style="color:#c3bdb0">(garrafa '+dinheiro(c.custoDestilado)+' + energético '+dinheiro(c.custoEnergetico)+' + gelos '+dinheiro(c.custoGelos)+')</span></div>'+
-          '<div style="font-size:16px;font-weight:900;color:var(--verde);background:var(--verdebg);border-radius:9px;padding:9px;text-align:center">💡 Sugestão: '+dinheiro(c.sugestao)+' <span style="font-size:11.5px;font-weight:700">(lucro '+dinheiro(c.sugestao-c.custoTotal)+')</span></div>';
-        lista.appendChild(card);
-      });
+  function montarFixas(){
+    listaFixas.innerHTML='';
+    DESPESAS_FIXAS.forEach(fx=>{
+      const card=document.createElement('div');card.className='cotacao-card';
+      const linha1=document.createElement('div');linha1.style.cssText='display:flex;gap:8px;margin-bottom:8px';
+      const inpNome=document.createElement('input');inpNome.value=fx.nome||'';inpNome.placeholder='Nome (ex.: Aluguel)';inpNome.style.cssText='flex:1;padding:9px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;font-weight:800;background:#fafafa';
+      inpNome.oninput=()=>{fx.nome=inpNome.value;salvarDespesasFixas()};
+      const inpValor=document.createElement('input');inpValor.type='number';inpValor.step='0.01';inpValor.value=fx.valor||'';inpValor.placeholder='R$';inpValor.style.cssText='width:90px;padding:9px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fafafa';
+      inpValor.oninput=()=>{fx.valor=Number(inpValor.value)||0;salvarDespesasFixas()};
+      const btnDel=document.createElement('button');btnDel.textContent='🗑️';btnDel.style.cssText='border:0;background:none;color:var(--vermelho);font-size:14px;cursor:pointer;flex:none';
+      btnDel.onclick=()=>{if(!confirm('Remover "'+(fx.nome||'essa despesa fixa')+'"?'))return;DESPESAS_FIXAS=DESPESAS_FIXAS.filter(x=>x.id!==fx.id);salvarDespesasFixas();montarFixas()};
+      linha1.append(inpNome,inpValor,btnDel);
+      card.appendChild(linha1);
+      const btnLancar=document.createElement('button');btnLancar.textContent='📅 Lançar esse mês';btnLancar.style.cssText='width:100%;border:0;background:var(--verdebg);color:var(--verde);border-radius:9px;padding:9px;font-weight:800;font-size:12px;cursor:pointer';
+      btnLancar.onclick=()=>{
+        if(!fx.nome||!fx.valor)return toast('Preenche o nome e o valor antes');
+        DESPESAS.push({id:'d'+Date.now()+Math.random().toString(36).slice(2),descricao:fx.nome,valor:fx.valor,categoria:'Fixa',data:hoje()});
+        salvarDespesas();toast('Despesa lançada');montarLista();
+      };
+      card.appendChild(btnLancar);
+      listaFixas.appendChild(card);
     });
-    if(!temItem){
-      lista.innerHTML='<p style="font-size:12.5px;color:#9a9aa0;text-align:center;padding:20px 0">Nenhum destilado com valor pago e tamanho cadastrado ainda.<br>Cadastra em "Copão (whisky/gin/vodka)" primeiro.</p>';
+  }
+  montarFixas();
+
+  const titNova=document.createElement('div');titNova.style.cssText='font-size:12px;font-weight:800;text-transform:uppercase;color:#7a7264;margin:16px 0 8px;border-bottom:2px solid var(--amarelo);padding-bottom:4px';titNova.textContent='+ Nova despesa avulsa';
+  body.appendChild(titNova);
+  const cardNova=document.createElement('div');cardNova.className='cotacao-card';
+  const inpDesc=document.createElement('input');inpDesc.placeholder='Descrição (ex.: Conserto da geladeira)';inpDesc.style.cssText='width:100%;padding:9px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fafafa;margin-bottom:8px';
+  cardNova.appendChild(inpDesc);
+  const camposNova=document.createElement('div');camposNova.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px';
+  const cValor=document.createElement('div');cValor.innerHTML='<label style="font-size:9.5px;color:#9a9aa0;font-weight:700;text-transform:uppercase">Valor (R$)</label>';
+  const inpValorNova=document.createElement('input');inpValorNova.type='number';inpValorNova.step='0.01';inpValorNova.style.cssText='width:100%;padding:8px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fafafa';
+  cValor.appendChild(inpValorNova);
+  const cData=document.createElement('div');cData.innerHTML='<label style="font-size:9.5px;color:#9a9aa0;font-weight:700;text-transform:uppercase">Data</label>';
+  const inpDataNova=document.createElement('input');inpDataNova.type='date';inpDataNova.value=hoje();inpDataNova.style.cssText='width:100%;padding:8px;border:1px solid #e4e4e7;border-radius:8px;font-size:13px;background:#fafafa';
+  cData.appendChild(inpDataNova);
+  camposNova.append(cValor,cData);
+  cardNova.appendChild(camposNova);
+  const catWrap=document.createElement('div');catWrap.className='opcoes';catWrap.style.marginBottom='8px';
+  let categoriaEscolhida='Outros';
+  CATEGORIAS_DESPESA.forEach(cat=>{
+    const b=document.createElement('button');b.type='button';b.className='opcao'+(cat===categoriaEscolhida?' ativa':'');b.textContent=cat;b.style.fontSize='11px';
+    b.onclick=()=>{categoriaEscolhida=cat;[...catWrap.children].forEach(x=>x.classList.toggle('ativa',x===b))};
+    catWrap.appendChild(b);
+  });
+  cardNova.appendChild(catWrap);
+  const btnAddNova=document.createElement('button');btnAddNova.textContent='+ Adicionar despesa';btnAddNova.style.cssText='width:100%;border:0;background:#111;color:#fff;border-radius:9px;padding:10px;font-weight:800;font-size:12.5px;cursor:pointer';
+  btnAddNova.onclick=()=>{
+    const valor=Number(inpValorNova.value)||0;
+    if(!inpDesc.value.trim())return toast('Descreve a despesa');
+    if(valor<=0)return toast('Informa o valor');
+    DESPESAS.push({id:'d'+Date.now()+Math.random().toString(36).slice(2),descricao:inpDesc.value.trim(),valor,categoria:categoriaEscolhida,data:inpDataNova.value||hoje()});
+    salvarDespesas();
+    inpDesc.value='';inpValorNova.value='';inpDataNova.value=hoje();
+    toast('Despesa lançada');montarLista();
+  };
+  cardNova.appendChild(btnAddNova);
+  body.appendChild(cardNova);
+
+  const titLista=document.createElement('div');titLista.style.cssText='font-size:12px;font-weight:800;text-transform:uppercase;color:#7a7264;margin:16px 0 8px;border-bottom:2px solid var(--amarelo);padding-bottom:4px';titLista.textContent='📋 Lançamentos';
+  body.appendChild(titLista);
+  const opsPeriodo=document.createElement('div');opsPeriodo.className='opcoes';opsPeriodo.style.marginBottom='8px';
+  body.appendChild(opsPeriodo);
+  const filtrosData=document.createElement('div');filtrosData.style.cssText='display:flex;gap:8px;margin-bottom:10px';
+  body.appendChild(filtrosData);
+  const totalBox=document.createElement('div');totalBox.className='totalbox';totalBox.style.cssText='background:var(--vermelhobg);color:var(--vermelho)';
+  body.appendChild(totalBox);
+  const listaLancamentos=document.createElement('div');
+  body.appendChild(listaLancamentos);
+
+  function montarOpsPeriodo(){
+    opsPeriodo.innerHTML='';
+    [['7d','7 dias'],['30d','30 dias'],['mes','Este mês'],['personalizado','Personalizado']].forEach(([v,l])=>{
+      const b=document.createElement('button');b.className='opcao'+(modo===v?' ativa':'');b.textContent=l;b.onclick=()=>{modo=v;montarOpsPeriodo();montarLista()};opsPeriodo.appendChild(b);
+    });
+    filtrosData.innerHTML='';
+    if(modo==='personalizado'){
+      const de1=document.createElement('input');de1.type='date';de1.className='campo';de1.value=dataDe;
+      const ate1=document.createElement('input');ate1.type='date';ate1.className='campo';ate1.value=dataAte;
+      de1.onchange=()=>{dataDe=de1.value;montarLista()};ate1.onchange=()=>{dataAte=ate1.value;montarLista()};
+      filtrosData.append(de1,ate1);
     }
   }
-  inpMargem.oninput=()=>{COPAO.margemCombo=Number(inpMargem.value)||0;salvarCopao();renderLista()};
-  renderLista();
+  function montarLista(){
+    const{de,ate}=calcularRange();
+    const deISO=isoDia(de),ateISO=isoDia(ate);
+    const doPeriodo=DESPESAS.filter(d=>d.data>=deISO&&d.data<=ateISO).sort((a,b)=>b.data.localeCompare(a.data));
+    const total=doPeriodo.reduce((s,d)=>s+d.valor,0);
+    totalBox.innerHTML='<small style="opacity:.8">TOTAL DE DESPESAS NO PERÍODO</small><br><b>'+dinheiro(total)+'</b>';
+    listaLancamentos.innerHTML='';
+    if(!doPeriodo.length){
+      const vazio=document.createElement('p');vazio.style.cssText='font-size:13px;color:#9a9aa0;text-align:center;padding:20px 10px';vazio.textContent='Nenhuma despesa lançada nesse período.';
+      listaLancamentos.appendChild(vazio);return;
+    }
+    doPeriodo.forEach(d=>{
+      const item=document.createElement('div');item.className='venda-item';
+      item.innerHTML='<div class="cart-top"><span><b>'+d.descricao+'</b><br><small>'+d.categoria+' · '+new Date(d.data+'T00:00:00').toLocaleDateString('pt-BR')+'</small></span><b>'+dinheiro(d.valor)+'</b></div>';
+      const btnDel=document.createElement('button');btnDel.textContent='🗑️ Excluir';btnDel.style.cssText='width:100%;margin-top:6px;border:0;border-radius:7px;padding:7px;background:var(--vermelhobg);color:var(--vermelho);font-weight:800;font-size:11.5px;cursor:pointer';
+      btnDel.onclick=()=>{if(!confirm('Excluir essa despesa?'))return;DESPESAS=DESPESAS.filter(x=>x.id!==d.id);salvarDespesas();montarLista()};
+      item.appendChild(btnDel);
+      listaLancamentos.appendChild(item);
+    });
+  }
+  montarOpsPeriodo();
+  montarLista();
+  document.body.appendChild(bg);
 }
 
-function abrirTabelaCopao(){
-  const root=document.getElementById('modalRoot');
-  const bg=document.createElement('div');bg.className='modal-bg';
-  const m=document.createElement('div');m.className='modal';
-  m.innerHTML='<h3>📋 Tabela de preços — Copões</h3><p class="desc">Atualiza sozinha conforme você escolhe os preços. Manda a imagem pro cliente ou deixa aberta aqui pra consultar rápido.</p>';
-  bg.onclick=x=>{if(x.target===bg){_tabelaCopaoAtualizar=null;bg.remove()}};
-  const box=document.createElement('div');box.className='cupom-print';
-  const head=document.createElement('div');head.className='cupom-head';
-  head.innerHTML='<img class="cupom-logo" src="'+LOGO_CUPOM+'" alt="Logo"><div class="titulo-cupom">TABELA DE COPÕES</div>'+(LOJA.nome?'<div class="loja-nome">'+LOJA.nome+'</div>':'');
-  box.appendChild(head);
-  const corpo=document.createElement('div');corpo.style.cssText='padding:12px 14px';
-  box.appendChild(corpo);
-  const foot=document.createElement('div');foot.className='cupom-foot';foot.textContent='🥃 Copão geladinho, do jeitinho que você gosta';
-  box.appendChild(foot);
-  function redesenharTabela(){
-    corpo.innerHTML='';
-    let temItem=false;
-    const tabela=document.createElement('table');tabela.style.cssText='width:100%;border-collapse:collapse;font-size:13px';
-    tabela.innerHTML='<thead><tr>'+
-      '<th style="text-align:left;padding:7px 4px;border-bottom:2px solid #111;font-size:11px;text-transform:uppercase">Produto</th>'+
-      '<th style="text-align:center;padding:7px 4px;border-bottom:2px solid #111;font-size:11px;text-transform:uppercase">500ml</th>'+
-      '<th style="text-align:center;padding:7px 4px;border-bottom:2px solid #111;font-size:11px;text-transform:uppercase">700ml</th>'+
-      '</tr></thead>';
-    const tbody=document.createElement('tbody');
-    ['whisky','gin','vodka'].forEach(tipo=>{
-      (COPAO[tipo]||[]).forEach(item=>{
-        const p500=item.preco500,p700=item.preco700;
-        if(!item.nome||(!p500&&!p700))return;
-        temItem=true;
-        const tr=document.createElement('tr');
-        tr.innerHTML='<td style="padding:8px 4px;border-bottom:1px solid #eee;font-weight:800">'+item.nome+'</td>'+
-          '<td style="padding:8px 4px;border-bottom:1px solid #eee;text-align:center">'+(p500?dinheiro(p500):'—')+'</td>'+
-          '<td style="padding:8px 4px;border-bottom:1px solid #eee;text-align:center">'+(p700?dinheiro(p700):'—')+'</td>';
-        tbody.appendChild(tr);
-      });
-    });
-    tabela.appendChild(tbody);
-    if(temItem){
-      corpo.appendChild(tabela);
-    }else{
-      corpo.innerHTML='<p style="font-size:12.5px;color:#9a9aa0;text-align:center;padding:20px 0">Nenhum preço escolhido ainda.<br>Volta no Copão e escolhe o preço de venda de cada marca.</p>';
-    }
-  }
-  redesenharTabela();
-  _tabelaCopaoAtualizar=redesenharTabela;
-  m.appendChild(box);
-  const btnImg=document.createElement('button');btnImg.textContent='📷 Enviar imagem no WhatsApp';btnImg.style.cssText='width:100%;padding:13px;border:0;border-radius:10px;background:var(--verde);color:#fff;font-weight:800;font-size:14px;margin-bottom:10px';
-  btnImg.onclick=()=>compartilharImagem(box,'tabela-copao.png','Tabela de preços - Copões');
-  m.appendChild(btnImg);
-  const fechar=document.createElement('button');fechar.textContent='Fechar';fechar.style.cssText='width:100%;padding:11px;border:0;border-radius:10px;background:var(--creme2);color:#756c5e;font-weight:800';
-  fechar.onclick=()=>{_tabelaCopaoAtualizar=null;bg.remove()};
-  m.appendChild(fechar);
-  bg.appendChild(m);
-  root.appendChild(bg);
-}
 
 
 
