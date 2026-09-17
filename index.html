@@ -1237,6 +1237,9 @@ function abrirResumoPeriodo(){
     const lucroLiquido=lucroBruto-despesasPeriodo;
     const boxLiquido=document.createElement('div');boxLiquido.className='totalbox';boxLiquido.style.cssText='background:'+(lucroLiquido<0?'var(--vermelhobg)':'#111')+';color:'+(lucroLiquido<0?'var(--vermelho)':'#fff')+';margin-top:8px';
     boxLiquido.innerHTML='<small style="opacity:.8">LUCRO LÍQUIDO NO PERÍODO</small><br><b>'+dinheiro(lucroLiquido)+'</b><div style="font-size:11px;margin-top:4px;opacity:.8">Lucro bruto '+dinheiro(lucroBruto)+' · Despesas '+dinheiro(despesasPeriodo)+'</div>';
+    const separacao=document.createElement('div');separacao.style.cssText='margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.15);font-size:11.5px;line-height:1.6';
+    separacao.innerHTML='📦 Reservar pra repor estoque: <b>'+dinheiro(cmv)+'</b><br>💰 Pode tirar pra você (sobrou de verdade): <b>'+dinheiro(lucroLiquido)+'</b>';
+    boxLiquido.appendChild(separacao);
     const btnDespesas=document.createElement('button');btnDespesas.textContent='💸 Ver/lançar despesas';btnDespesas.style.cssText='margin-top:8px;border:0;background:rgba(255,255,255,.15);color:inherit;border-radius:8px;padding:8px 12px;font-weight:800;font-size:11.5px;cursor:pointer';
     btnDespesas.onclick=()=>abrirDespesas();
     boxLiquido.appendChild(btnDespesas);
