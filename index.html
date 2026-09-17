@@ -1214,15 +1214,24 @@ function abrirResumoPeriodo(){
     const box=document.createElement('div');box.className='totalbox';
     box.innerHTML='<small>TOTAL NO PERÍODO</small><br><b>'+dinheiro(totalPeriodo)+'</b><div style="font-size:11px;margin-top:4px;color:#bdb6a4">'+vendasPeriodo.length+' venda'+(vendasPeriodo.length!==1?'s':'')+'</div>';
     m.appendChild(box);
-    let cmv=0,semCusto=0;
+    let cmv=0,produtosSemCusto=new Set();
     vendasPeriodo.forEach(v=>v.itens.forEach(i=>{
       const c=custoItemVenda(i);
-      if(c>0)cmv+=c;else semCusto++;
+      if(c>0){cmv+=c}
+      else if(i.isCombo){(i.componentes||[]).forEach(comp=>produtosSemCusto.add(comp.produtoId))}
+      else{produtosSemCusto.add(i.produtoId)}
     }));
+    const semCusto=produtosSemCusto.size;
     const lucroBruto=totalPeriodo-cmv;
     const margemPct=totalPeriodo>0?(lucroBruto/totalPeriodo*100):0;
     const boxLucro=document.createElement('div');boxLucro.className='totalbox';boxLucro.style.cssText='background:var(--verdebg);color:var(--verde);margin-top:8px';
-    boxLucro.innerHTML='<small style="opacity:.8">LUCRO BRUTO NO PERÍODO</small><br><b>'+dinheiro(lucroBruto)+'</b><div style="font-size:11px;margin-top:4px;opacity:.85">Faturamento '+dinheiro(totalPeriodo)+' · CMV '+dinheiro(cmv)+' · Margem '+margemPct.toFixed(1)+'%</div>'+(semCusto>0?'<div style="font-size:10px;margin-top:3px;opacity:.7">'+semCusto+' item(ns) vendido(s) sem custo cadastrado — não entraram no CMV, então o lucro real pode ser um pouco menor</div>':'');
+    boxLucro.innerHTML='<small style="opacity:.8">LUCRO BRUTO NO PERÍODO</small><br><b>'+dinheiro(lucroBruto)+'</b><div style="font-size:11px;margin-top:4px;opacity:.85">Faturamento '+dinheiro(totalPeriodo)+' · CMV '+dinheiro(cmv)+' · Margem '+margemPct.toFixed(1)+'%</div>';
+    if(semCusto>0){
+      const btnSemCusto=document.createElement('button');btnSemCusto.style.cssText='all:unset;cursor:pointer;display:block;font-size:10.5px;margin-top:5px;text-decoration:underline;opacity:.95;color:inherit';
+      btnSemCusto.textContent='📝 '+semCusto+' item(ns) vendido(s) sem custo cadastrado — toca aqui pra preencher rapidinho';
+      btnSemCusto.onclick=()=>abrirPreencherCustosFaltando([...produtosSemCusto],abrirResumoPeriodo);
+      boxLucro.appendChild(btnSemCusto);
+    }
     m.appendChild(boxLucro);
     const despesasPeriodo=despesasNoPeriodo(deISO,ateISO);
     const lucroLiquido=lucroBruto-despesasPeriodo;
@@ -1296,6 +1305,48 @@ function abrirResumoPeriodo(){
   }
   montar();
 }
+function abrirPreencherCustosFaltando(produtoIds,aoTerminar){
+  fecharModal();
+  const bg=document.createElement('div');bg.className='cotacao-bg';
+  const header=document.createElement('div');header.className='cotacao-header';
+  const tit=document.createElement('div');tit.innerHTML='<h3 style="margin:0;font-size:16px;font-weight:800">📝 Preencher custos faltando</h3><p style="margin:2px 0 0;font-size:11px;color:#9a9aa0">Esses produtos foram vendidos no período mas não têm o preço de compra cadastrado ainda.</p>';
+  const btnFechar=document.createElement('button');btnFechar.textContent='✅ Concluir';btnFechar.style.cssText='border:0;background:#111;color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;font-size:12px;cursor:pointer;flex:none;min-height:40px';
+  btnFechar.onclick=()=>{bg.remove();if(aoTerminar)aoTerminar()};
+  header.append(tit,btnFechar);
+  bg.appendChild(header);
+  const body=document.createElement('div');body.className='cotacao-body';
+  bg.appendChild(body);
+  const itens=produtoIds.map(id=>PRODUTOS.find(p=>p.id===id)).filter(Boolean).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  if(!itens.length){
+    const vazio=document.createElement('p');vazio.style.cssText='font-size:13px;color:#9a9aa0;text-align:center;padding:30px 10px';vazio.textContent='Nada pendente. 🎉';
+    body.appendChild(vazio);
+  }
+  itens.forEach(p=>{
+    const e=estado(p);
+    const card=document.createElement('div');card.className='cotacao-card';
+    const nome=document.createElement('div');nome.style.cssText='font-weight:800;font-size:13.5px;margin-bottom:8px';nome.textContent=p.nome;
+    card.appendChild(nome);
+    const campos=document.createElement('div');campos.style.cssText='display:flex;flex-wrap:wrap;gap:10px';
+    const cCusto=document.createElement('div');cCusto.style.cssText='display:flex;align-items:center;gap:6px';
+    cCusto.innerHTML='<span style="font-size:11px;color:#9a9aa0">💰 Preço de compra (R$)</span>';
+    const inpCusto=document.createElement('input');inpCusto.type='number';inpCusto.step='0.01';inpCusto.value=e.custoUltimaCompra??'';inpCusto.placeholder='0,00';inpCusto.style.cssText='width:75px;border:1px solid #e4e4e7;border-radius:8px;padding:6px 8px;font-size:12.5px;background:#fafafa';
+    inpCusto.oninput=()=>{e.custoUltimaCompra=inpCusto.value?Number(inpCusto.value):null;autoSalvar()};
+    cCusto.appendChild(inpCusto);
+    campos.appendChild(cCusto);
+    if(!p.cigarro&&!p.unidadeOnly){
+      const cPacote=document.createElement('div');cPacote.style.cssText='display:flex;align-items:center;gap:6px';
+      cPacote.innerHTML='<span style="font-size:11px;color:#9a9aa0">📦 Un. por fardo/caixa</span>';
+      const inpPacote=document.createElement('input');inpPacote.type='number';inpPacote.value=e.pacote||'';inpPacote.placeholder='ex: 12';inpPacote.style.cssText='width:60px;border:1px solid #e4e4e7;border-radius:8px;padding:6px 8px;font-size:12.5px;background:#fafafa';
+      inpPacote.onchange=()=>{e.pacote=Number(inpPacote.value)||0;autoSalvar()};
+      cPacote.appendChild(inpPacote);
+      campos.appendChild(cPacote);
+    }
+    card.appendChild(campos);
+    body.appendChild(card);
+  });
+  document.body.appendChild(bg);
+}
+
 
 function abrirVendas(data=hoje()){
   const vendas=VENDAS.filter(v=>v.data===data),m=baseModal('📅 Fechamento do dia','Consulte as vendas e cancele quando necessário.'),inp=document.createElement('input');inp.className='campo';inp.type='date';inp.value=data;inp.onchange=()=>abrirVendas(inp.value);m.appendChild(inp);
