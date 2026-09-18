@@ -149,7 +149,8 @@ let DESPESAS=load('despesas-vh-v2',[]);
 function salvarDespesas(){save('despesas-vh-v2',DESPESAS)}
 let DESPESAS_FIXAS=load('despesas-fixas-vh-v2',[]);
 function salvarDespesasFixas(){save('despesas-fixas-vh-v2',DESPESAS_FIXAS)}
-function despesasNoPeriodo(deISO,ateISO){return DESPESAS.filter(d=>d.data>=deISO&&d.data<=ateISO).reduce((s,d)=>s+d.valor,0)}
+function despesasNoPeriodo(deISO,ateISO){return DESPESAS.filter(d=>d.data>=deISO&&d.data<=ateISO&&d.categoria!=='Reposição de estoque').reduce((s,d)=>s+d.valor,0)}
+function reposicaoNoPeriodo(deISO,ateISO){return DESPESAS.filter(d=>d.data>=deISO&&d.data<=ateISO&&d.categoria==='Reposição de estoque').reduce((s,d)=>s+d.valor,0)}
 function migrarCopaoAntigo(){
   let mudou=false;
   ['whisky','gin','vodka'].forEach(tipo=>{
@@ -1237,9 +1238,14 @@ function abrirResumoPeriodo(){
     const lucroLiquido=lucroBruto-despesasPeriodo;
     const boxLiquido=document.createElement('div');boxLiquido.className='totalbox';boxLiquido.style.cssText='background:'+(lucroLiquido<0?'var(--vermelhobg)':'#111')+';color:'+(lucroLiquido<0?'var(--vermelho)':'#fff')+';margin-top:8px';
     boxLiquido.innerHTML='<small style="opacity:.8">LUCRO LÍQUIDO NO PERÍODO</small><br><b>'+dinheiro(lucroLiquido)+'</b><div style="font-size:11px;margin-top:4px;opacity:.8">Lucro bruto '+dinheiro(lucroBruto)+' · Despesas '+dinheiro(despesasPeriodo)+'</div>';
+    const reposicaoPaga=reposicaoNoPeriodo(deISO,ateISO);
+    const faltaRepor=cmv-reposicaoPaga;
     const separacao=document.createElement('div');separacao.style.cssText='margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.15);font-size:11.5px;line-height:1.6';
-    separacao.innerHTML='📦 Reservar pra repor estoque: <b>'+dinheiro(cmv)+'</b><br>💰 Pode tirar pra você (sobrou de verdade): <b>'+dinheiro(lucroLiquido)+'</b>';
+    separacao.innerHTML='📦 Reserva pra repor estoque: <b>'+dinheiro(cmv)+'</b><br>✅ Já pago em reposição: <b>'+dinheiro(reposicaoPaga)+'</b><br>'+(faltaRepor>0.009?'🟡 Ainda falta reservar/pagar: <b>'+dinheiro(faltaRepor)+'</b>':'🎉 Reposição do período já tá coberta')+'<br>💰 Pode tirar pra você (sobrou de verdade): <b>'+dinheiro(lucroLiquido)+'</b>';
     boxLiquido.appendChild(separacao);
+    const btnLancarReposicao=document.createElement('button');btnLancarReposicao.textContent='📦 Lançar pagamento de reposição';btnLancarReposicao.style.cssText='margin-top:8px;margin-right:6px;border:0;background:var(--verde);color:#fff;border-radius:8px;padding:8px 12px;font-weight:800;font-size:11.5px;cursor:pointer';
+    btnLancarReposicao.onclick=()=>abrirDespesas('Reposição de estoque');
+    boxLiquido.appendChild(btnLancarReposicao);
     const btnDespesas=document.createElement('button');btnDespesas.textContent='💸 Ver/lançar despesas';btnDespesas.style.cssText='margin-top:8px;border:0;background:rgba(255,255,255,.15);color:inherit;border-radius:8px;padding:8px 12px;font-weight:800;font-size:11.5px;cursor:pointer';
     btnDespesas.onclick=()=>abrirDespesas();
     boxLiquido.appendChild(btnDespesas);
@@ -2630,9 +2636,9 @@ function abrirCopao(){
   function atualizarTodasMarcas(){Object.values(secoes).forEach(s=>s.atualizadores.forEach(fn=>fn()))}
   document.body.appendChild(bg);
 }
-function abrirDespesas(){
+function abrirDespesas(categoriaInicial){
   fecharModal();
-  const CATEGORIAS_DESPESA=['Aluguel','Funcionário','Água/Luz','Internet','Manutenção','Transporte','Fixa','Outros'];
+  const CATEGORIAS_DESPESA=['Reposição de estoque','Aluguel','Funcionário','Água/Luz','Internet','Manutenção','Transporte','Fixa','Outros'];
   let modo='mes',dataDe=isoDia(new Date()),dataAte=isoDia(new Date());
   function calcularRange(){
     const h=new Date();let de,ate=new Date(h);
@@ -2700,7 +2706,7 @@ function abrirDespesas(){
   camposNova.append(cValor,cData);
   cardNova.appendChild(camposNova);
   const catWrap=document.createElement('div');catWrap.className='opcoes';catWrap.style.marginBottom='8px';
-  let categoriaEscolhida='Outros';
+  let categoriaEscolhida=categoriaInicial||'Outros';
   CATEGORIAS_DESPESA.forEach(cat=>{
     const b=document.createElement('button');b.type='button';b.className='opcao'+(cat===categoriaEscolhida?' ativa':'');b.textContent=cat;b.style.fontSize='11px';
     b.onclick=()=>{categoriaEscolhida=cat;[...catWrap.children].forEach(x=>x.classList.toggle('ativa',x===b))};
