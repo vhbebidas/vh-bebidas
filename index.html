@@ -2534,6 +2534,10 @@ function abrirCopao(){
   cardInsumos.appendChild(campoInsumo('⚡ Energético 2L (garrafa cheia)',COPAO.energetico2L,v=>COPAO.energetico2L=v));
   body.appendChild(cardInsumos);
 
+  const btnTabela=document.createElement('button');btnTabela.textContent='📋 Ver tabela de preços dos copões';btnTabela.style.cssText='width:100%;border:0;background:#111;color:#fff;border-radius:10px;padding:11px;font-weight:800;font-size:13px;cursor:pointer;margin-bottom:14px';
+  btnTabela.onclick=()=>{bg.remove();abrirTabelaPrecosCopao()};
+  body.appendChild(btnTabela);
+
   const PRECOS_REDONDOS=[10,15,20,25,30,35];
 
   function montarBlocoTamanho(item,tamanho){
@@ -2561,7 +2565,7 @@ function abrirCopao(){
       selPreco.style.display='';
       subInfo.textContent=r.doses+' doses (45ml cada) = '+r.mlDestilado+'ml de destilado + '+r.mlEnergetico+'ml de energético';
       custoLinha.textContent='💰 Custo real: '+dinheiro(r.custoTotal);
-      const valorSelecionado=selPreco.value;
+      const valorSelecionado=selPreco.value||item['preco'+tamanho]||'';
       selPreco.innerHTML='<option value="">Escolher preço de venda...</option>'+PRECOS_REDONDOS.map(preco=>{
         const estrela=(preco-r.custoTotal)>=r.custoTotal;
         return'<option value="'+preco+'">'+(estrela?'⭐ ':'')+'R$ '+preco.toFixed(2).replace('.',',')+'</option>';
@@ -2579,7 +2583,7 @@ function abrirCopao(){
       resultado.style.cssText='font-size:13.5px;font-weight:800;text-align:center;padding:9px;border-radius:9px;background:'+(lucro<0?'var(--vermelhobg)':(estrela?'var(--verdebg)':'#fff4e0'))+';color:'+(lucro<0?'var(--vermelho)':(estrela?'var(--verde)':'#c9740f'));
       resultado.textContent=(lucro<0?'❌ Prejuízo de ':(estrela?'⭐ Lucro de ':'✅ Lucro de '))+dinheiro(Math.abs(lucro));
     }
-    selPreco.onchange=()=>{const r=calcularCopao(item,tamanho);atualizarResultadoPreco(r)};
+    selPreco.onchange=()=>{item['preco'+tamanho]=selPreco.value?Number(selPreco.value):null;salvarCopao();const r=calcularCopao(item,tamanho);atualizarResultadoPreco(r)};
     redesenhar();
     return{bloco,redesenhar};
   }
@@ -2635,6 +2639,44 @@ function abrirCopao(){
 
   function atualizarTodasMarcas(){Object.values(secoes).forEach(s=>s.atualizadores.forEach(fn=>fn()))}
   document.body.appendChild(bg);
+}
+function abrirTabelaPrecosCopao(){
+  fecharModal();
+  const m=baseModal('📋 Tabela de preços — Copões','Atualiza sozinha com os preços escolhidos no Copão. Compartilha com o cliente.');
+  const box=document.createElement('div');box.className='cupom-print';
+  const head=document.createElement('div');head.className='cupom-head';
+  head.innerHTML='<img class="cupom-logo" src="'+LOGO_CUPOM+'" alt="Logo">'+
+    '<div class="titulo-cupom">COPÕES</div>'+
+    (LOJA.nome?'<div class="loja-nome">'+LOJA.nome+'</div>':'')+
+    (LOJA.telefone?'<div class="loja-info">Tel: '+LOJA.telefone+'</div>':'');
+  box.appendChild(head);
+  const corpo=document.createElement('div');corpo.style.cssText='padding:8px 0 4px';
+  let temAlgum=false;
+  [['whisky','🥃 Whisky'],['gin','🍸 Gin'],['vodka','🍹 Vodka']].forEach(([tipo,label])=>{
+    const marcas=(COPAO[tipo]||[]).filter(item=>item.preco500||item.preco700);
+    if(!marcas.length)return;
+    temAlgum=true;
+    const titTipo=document.createElement('div');titTipo.style.cssText='font-weight:800;font-size:13.5px;margin:12px 0 5px;text-transform:uppercase;border-bottom:2px solid #111;padding-bottom:3px';titTipo.textContent=label;
+    corpo.appendChild(titTipo);
+    marcas.forEach(item=>{
+      const precos=[];
+      if(item.preco500)precos.push('500ml '+dinheiro(item.preco500));
+      if(item.preco700)precos.push('700ml '+dinheiro(item.preco700));
+      const linha=document.createElement('div');linha.style.cssText='display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eee;font-size:12.5px;gap:8px';
+      linha.innerHTML='<span>'+(item.nome||'Sem nome')+'</span><b style="white-space:nowrap">'+precos.join(' · ')+'</b>';
+      corpo.appendChild(linha);
+    });
+  });
+  box.appendChild(corpo);
+  m.appendChild(box);
+  if(!temAlgum){
+    const aviso=document.createElement('p');aviso.style.cssText='font-size:12.5px;color:#9a9aa0;text-align:center;padding:10px 0';aviso.textContent='Nenhum copão com preço de venda escolhido ainda. Vai no Copão e escolhe o preço de cada marca primeiro.';
+    m.appendChild(aviso);
+    return;
+  }
+  const btnImg=document.createElement('button');btnImg.textContent='📤 Compartilhar imagem no WhatsApp';btnImg.style.cssText='width:100%;padding:12px;border:0;border-radius:10px;background:var(--verde);color:#fff;font-weight:800;margin-top:12px;cursor:pointer';
+  btnImg.onclick=()=>compartilharImagem(box,'tabela-copoes.png','Tabela de preços - Copões '+(LOJA.nome||''));
+  m.appendChild(btnImg);
 }
 function abrirDespesas(categoriaInicial){
   fecharModal();
